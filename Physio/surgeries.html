@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surgical Cases Tracker | Lakshmi HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=5">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .surgery-badge {
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .surgery-badge.Scheduled { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+    .surgery-badge.InProgress { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
+    .surgery-badge.Completed { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+    .surgery-badge.Cancelled { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+
+    .implant-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px dashed var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .followup-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: rgba(20, 184, 166, 0.08);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+<div class="cms-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i data-lucide="activity"></i>Revive<span>CMS</span></div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav"></nav>
+    <div class="sidebar-footer"></div>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn"><i data-lucide="menu"></i></button>
+      <h1 class="page-title">Surgical Cases</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="scheduleSurgeryBtn"><i data-lucide="plus"></i> Log Surgical Case</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Stats Banner -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 1.5rem;">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(239,68,68,0.12);color:var(--danger);"><i data-lucide="activity"></i></div>
+        <div class="stat-info">
+          <h4>Total Surgery Cases</h4>
+          <h2 id="statTotalSurgeries">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(59,130,246,0.12);color:#3b82f6;"><i data-lucide="calendar"></i></div>
+        <div class="stat-info">
+          <h4>Scheduled Cases</h4>
+          <h2 id="statScheduledSurgeries">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;"><i data-lucide="heart"></i></div>
+        <div class="stat-info">
+          <h4>Post-Operative Rehab</h4>
+          <h2 id="statRehabSurgeries">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="check-circle"></i></div>
+        <div class="stat-info">
+          <h4>Successfully Discharged</h4>
+          <h2 id="statDischargedSurgeries">0</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar" style="margin-bottom:1.5rem;">
+      <div class="search-input-wrap">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchSurgery" placeholder="Search by patient or surgery type...">
+      </div>
+      <select id="surgeryStatusFilter" style="padding:0.7rem 1rem; border:1.5px solid var(--border); border-radius:50px; background:var(--bg-main); font-size:0.9rem;">
+        <option value="">All Statuses</option>
+        <option value="Scheduled">Scheduled</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </div>
+
+    <!-- Surgeries List -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem;" id="surgeriesContainer">
+      <div class="spinner"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Schedule / Log Surgery Modal -->
+<div class="modal-overlay" id="surgeryModal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h2 id="surgeryModalTitle">Log Surgical Case</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="surgeryForm" novalidate>
+        <input type="hidden" id="surgeryId">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="form-group">
+            <label>Patient Name *</label>
+            <select id="surgPatientId" required>
+              <option value="">&mdash; Select Patient &mdash;</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Surgery Type *</label>
+              <input type="text" id="surgType" placeholder="e.g. Total Knee Replacement (TKR)" required>
+            </div>
+            <div class="form-group">
+              <label>Date of Surgery *</label>
+              <input type="date" id="surgDate" required>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Lead Surgeon *</label>
+              <input type="text" id="surgSurgeon" value="Dr. C. SANJAY" required>
+            </div>
+            <div class="form-group">
+              <label>Case Status</label>
+              <select id="surgStatus">
+                <option value="Scheduled">Scheduled</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Implant Used / Joint System Details</label>
+            <input type="text" id="surgImplant" placeholder="e.g. Zimmer NexGen CR Knee System, Depuy Synthes Hip, Stryker TaperLoc">
+          </div>
+          <div class="form-group">
+            <label>Planned Follow-Up Schedule</label>
+            <input type="text" id="surgFollowUp" placeholder="e.g. 2 weeks post-op, 6 weeks, 3 months">
+          </div>
+          <div class="form-group">
+            <label>Post-Op Progress &amp; Rehabilitation Notes</label>
+            <textarea id="surgRecovery" placeholder="Record incision healing, range of motion post-op, ambulation status..." style="height:100px;"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="saveSurgeryBtn"><i data-lucide="save"></i> Save Surgery Case</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/patientRepository.js"></script>
+<script src="js/repositories/surgeryRepository.js"></script>
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script>
+let allSurgeries = [];
+let allPatients = [];
+let editingSurgeryId = null;
+
+document.addEventListener('cms:ready', async () => {
+  try {
+    await loadData();
+    setupEventListeners();
+    renderSurgeries();
+  } catch (err) {
+    console.error('Error during surgeries initialization:', err);
+    const container = document.getElementById('surgeriesContainer');
+    if (container) {
+      container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem;" class="card"><p style="color:var(--text-muted);">Failed to load surgical cases. Please try refreshing.</p></div>';
+    }
+  }
+});
+
+async function loadData() {
+  try {
+    allSurgeries = await CMS.surgeries.getAll();
+  } catch (err) {
+    console.error('Failed to load surgeries:', err);
+    allSurgeries = [];
+  }
+  try {
+    allPatients = await CMS.patients.getAll();
+  } catch (err) {
+    console.error('Failed to load patients:', err);
+    allPatients = [];
+  }
+  
+  const select = document.getElementById('surgPatientId');
+  if (select) {
+    select.innerHTML = '<option value="">&mdash; Select Patient &mdash;</option>' + 
+      allPatients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
+    
+  updateStatistics();
+}
+
+function updateStatistics() {
+  document.getElementById('statTotalSurgeries').textContent = allSurgeries.length;
+  
+  const sched = allSurgeries.filter(s => s.status === 'Scheduled').length;
+  document.getElementById('statScheduledSurgeries').textContent = sched;
+  
+  const inProgress = allSurgeries.filter(s => s.status === 'In Progress').length;
+  document.getElementById('statRehabSurgeries').textContent = inProgress;
+  
+  const completed = allSurgeries.filter(s => s.status === 'Completed').length;
+  document.getElementById('statDischargedSurgeries').textContent = completed;
+}
+
+function setupEventListeners() {
+  document.getElementById('scheduleSurgeryBtn').addEventListener('click', () => {
+    editingSurgeryId = null;
+    document.getElementById('surgeryModalTitle').textContent = 'Log Surgical Case';
+    document.getElementById('surgeryForm').reset();
+    document.getElementById('surgDate').value = todayISO();
+    document.getElementById('surgSurgeon').value = 'Dr. C. SANJAY';
+    document.getElementById('surgStatus').value = 'Scheduled';
+    openModal('surgeryModal');
+  });
+  
+  document.getElementById('saveSurgeryBtn').addEventListener('click', saveSurgery);
+  
+  document.getElementById('searchSurgery').addEventListener('input', renderSurgeries);
+  document.getElementById('surgeryStatusFilter').addEventListener('change', renderSurgeries);
+}
+
+function renderSurgeries() {
+  const container = document.getElementById('surgeriesContainer');
+  const q = document.getElementById('searchSurgery').value.toLowerCase();
+  const status = document.getElementById('surgeryStatusFilter').value;
+  
+  const filtered = allSurgeries.filter(s => 
+    (!q || s.patientName.toLowerCase().includes(q) || s.type.toLowerCase().includes(q) || (s.patientId || '').toString().toLowerCase().includes(q)) &&
+    (!status || s.status === status)
+  );
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem;" class="card"><p style="color:var(--text-muted);">No surgical cases found</p></div>`;
+    return;
+  }
+  
+  container.innerHTML = filtered.slice().reverse().map(s => {
+    let statCls = 'Scheduled';
+    let statText = 'Scheduled';
+    
+    if (s.status === 'In Progress') { statCls = 'InProgress'; statText = 'In Progress'; }
+    else if (s.status === 'Completed') { statCls = 'Completed'; statText = 'Completed'; }
+    else if (s.status === 'Cancelled') { statCls = 'Cancelled'; statText = 'Cancelled'; }
+    
+    return `
+      <div class="card fade-in" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+            <div>
+              <h3 style="margin:0; font-size:1.15rem; color:var(--danger);">${s.type}</h3>
+              <span style="font-size:0.88rem; font-weight:700; color:var(--text-main); cursor:pointer;" onclick="navigateToPatientProfile('${s.patientId}')">${s.patientName}</span>
+            </div>
+            <span class="surgery-badge ${statCls}">${statText}</span>
+          </div>
+          
+          <div style="display:flex; gap:1.5rem; font-size:0.85rem; margin-top:0.75rem; color:var(--text-muted);">
+            <div><i data-lucide="calendar" style="width:12px;height:12px;display:inline;"></i> Date: <strong style="color:var(--text-main);">${formatDate(s.date)}</strong></div>
+            <div><i data-lucide="user" style="width:12px;height:12px;display:inline;"></i> Surgeon: <strong style="color:var(--text-main);">${s.surgeon || 'Dr. C. Sanjay'}</strong></div>
+          </div>
+          
+          ${s.implantUsed ? `
+            <div class="implant-box">
+              <span style="color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; font-weight:700; display:block;">Implant Specifications</span>
+              <strong>${s.implantUsed}</strong>
+            </div>
+          ` : ''}
+          
+          ${s.followUpVisits ? `
+            <div class="followup-indicator">
+              <i data-lucide="calendar-days" style="width:12px;height:12px;"></i> Follow-ups: ${s.followUpVisits}
+            </div>
+          ` : ''}
+          
+          <div style="margin-top:0.75rem; border-top:1px solid var(--border); padding-top:0.75rem;">
+            <span style="color:var(--text-muted); font-size:0.75rem; font-weight:600; display:block; margin-bottom:2px;">Post-Op Recovery Details</span>
+            <p style="margin:0; font-size:0.85rem; line-height:1.4;">${s.recoveryProgress || 'No recovery updates logged yet.'}</p>
+          </div>
+        </div>
+        
+        <div style="display:flex; gap:0.5rem; border-top:1px solid var(--border); padding-top:1rem; margin-top:1.25rem;">
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="editSurgery('${s.id}')"><i data-lucide="edit-2"></i> Update Progress</button>
+          <button class="btn btn-outline btn-sm" onclick="deleteSurgery('${s.id}')" style="color:var(--danger);"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  lucide.createIcons();
+}
+
+async function saveSurgery() {
+  const patientId = document.getElementById('surgPatientId').value;
+  const type = document.getElementById('surgType').value.trim();
+  const date = document.getElementById('surgDate').value;
+  const surgeon = document.getElementById('surgSurgeon').value.trim();
+  const status = document.getElementById('surgStatus').value;
+  const implantUsed = document.getElementById('surgImplant').value.trim();
+  const followUpVisits = document.getElementById('surgFollowUp').value.trim();
+  const recoveryProgress = document.getElementById('surgRecovery').value.trim();
+  
+  if (!patientId || !type || !date) {
+    showToast('Please fill in patient, surgery type, and procedure date.', 'error');
+    return;
+  }
+  
+  const targetPatientId = patientId;
+  const patient = allPatients.find(p => p.id.toString() === targetPatientId.toString());
+  if (!patient) return;
+  
+  const id = document.getElementById('surgeryId').value;
+  const surgData = {
+    patientId: targetPatientId,
+    patientName: patient.name,
+    type,
+    date,
+    surgeon,
+    status,
+    implantUsed,
+    followUpVisits,
+    recoveryProgress
+  };
+  
+  try {
+    if (id) {
+      const targetId = isNaN(id) ? id : parseInt(id);
+      await CMS.surgeries.update({ ...surgData, id: targetId });
+      showToast('Surgical record updated!', 'success');
+    } else {
+      await CMS.surgeries.add(surgData);
+      showToast('Surgical case successfully logged!', 'success');
+      
+      // Auto-add visit / EMR event for surgery
+      await CMS.visits.add({
+        patientId: targetPatientId,
+        date,
+        notes: `Surgery Case Logged: Underwent "${type}" lead by ${surgeon}. Status: ${status}.`
+      });
+    }
+    
+    closeModal('surgeryModal');
+    await loadData();
+    renderSurgeries();
+  } catch (err) {
+    showToast('Error saving surgery case: ' + err.message, 'error');
+  }
+}
+
+async function editSurgery(id) {
+  const targetId = isNaN(id) ? id : parseInt(id);
+  const s = await CMS.surgeries.getById(targetId);
+  
+  document.getElementById('surgeryModalTitle').textContent = 'Update Surgery Case';
+  document.getElementById('surgeryId').value = s.id;
+  document.getElementById('surgPatientId').value = s.patientId;
+  document.getElementById('surgType').value = s.type;
+  document.getElementById('surgDate').value = s.date;
+  document.getElementById('surgSurgeon').value = s.surgeon || 'Dr. C. SANJAY';
+  document.getElementById('surgStatus').value = s.status || 'Scheduled';
+  document.getElementById('surgImplant').value = s.implantUsed || '';
+  document.getElementById('surgFollowUp').value = s.followUpVisits || '';
+  document.getElementById('surgRecovery').value = (s.recoveryProgress === undefined || s.recoveryProgress === null || s.recoveryProgress === '') ? 0 : s.recoveryProgress;
+  
+  openModal('surgeryModal');
+}
+
+async function deleteSurgery(id) {
+  if (!confirm('Are you sure you want to delete this surgery record?')) return;
+  const targetId = isNaN(id) ? id : parseInt(id);
+  await CMS.surgeries.delete(targetId);
+  showToast('Surgery record deleted.', 'warning');
+  await loadData();
+  renderSurgeries();
+}
+
+function navigateToPatientProfile(patientId) {
+  sessionStorage.setItem('openPatientProfileId', patientId);
+  window.location.href = 'patients.html';
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+</script>
+</body>
+</html>

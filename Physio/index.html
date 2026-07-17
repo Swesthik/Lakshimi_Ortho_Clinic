@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Lakshmi HIS &mdash; Orthopaedic &amp; Pain HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=5">
+  <link rel="stylesheet" href="css/analytics.css?v=2">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js Integration -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="cms-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <i data-lucide="activity"></i>
+      Revive<span>CMS</span>
+    </div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav">
+      <a href="index.html"           class="nav-item active" data-page="index.html">
+        <i data-lucide="layout-dashboard"></i> Dashboard
+      </a>
+      <a href="patients.html"        class="nav-item" data-page="patients.html">
+        <i data-lucide="users"></i> Patients
+      </a>
+      <a href="medicines.html"       class="nav-item" data-page="medicines.html">
+        <i data-lucide="pill"></i> Medicines
+        <span class="nav-badge low-stock-badge" style="display:none">0</span>
+      </a>
+      <a href="prescriptions.html"   class="nav-item" data-page="prescriptions.html">
+        <i data-lucide="file-text"></i> Prescriptions
+      </a>
+      <a href="reports.html"         class="nav-item" data-page="reports.html">
+        <i data-lucide="bar-chart-2"></i> Reports
+      </a>
+      <a href="profit.html"          class="nav-item" data-page="profit.html">
+        <i data-lucide="trending-up"></i> Profit Analysis
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-doctor">
+        <div class="doctor-avatar">K</div>
+        <div>
+          <h4>Dr. R. Karthik</h4>
+          <p>MPT (Orthopaedics)</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Sidebar Overlay (mobile) -->
+  <div class="sidebar-overlay"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn" aria-label="Open menu">
+        <i data-lucide="menu"></i>
+      </button>
+      <h1 class="page-title">Dashboard</h1>
+    </div>
+    <div class="topbar-right">
+      <div class="icon-btn" title="Refresh" id="btnDashboardRefresh">
+        <i data-lucide="refresh-cw"></i>
+      </div>
+      <div class="icon-btn" title="Settings">
+        <i data-lucide="settings"></i>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- Notification Alert Banner -->
+    <div class="card alert alert-warning fade-in" id="notificationPanel" style="display:none;margin-bottom:1.5rem;background:#1e1b4b;border:1px solid #312e81;color:#c084fc;padding:0.9rem 1.25rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap;gap:0.5rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <i data-lucide="bell" style="color:#a855f7;"></i>
+          <div id="notificationAlertMsg" style="font-size:0.9rem;font-weight:500;">ðŸ”” Loading alerts...</div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="border-color:#4338ca;color:#c084fc;padding:3px 12px;font-size:0.78rem;" onclick="toggleNotificationsModal()">
+          View Alerts
+        </button>
+      </div>
+    </div>
+
+    <!-- Welcome Banner -->
+    <div style="background:linear-gradient(135deg,#0f766e,#14b8a6);color:white;padding:1.5rem 2rem;border-radius:12px;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h2 style="color:white;font-size:1.3rem;margin-bottom:0.25rem;">Good day, <span id="welcomeDrName">Dr. C. SANJAY</span> M.S.</h2>
+        <p id="todayDateStr" style="margin:0;color:rgba(255,255,255,0.8);font-size:0.9rem;"></p>
+      </div>
+      <a href="patients.html" class="btn" style="background:white;color:#0f766e;font-weight:700;">
+        <i data-lucide="plus"></i> New Patient
+      </a>
+    </div>
+
+    <!-- Stat Cards Grid -->
+    <div class="stats-grid" id="statsGrid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 2rem;">
+      <div class="stat-card">
+        <div class="stat-icon blue"><i data-lucide="users"></i></div>
+        <div class="stat-info">
+          <h4>Total Patients</h4>
+          <h2 id="statPatients">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="calendar-check"></i></div>
+        <div class="stat-info">
+          <h4>Today's Visits</h4>
+          <h2 id="statVisits">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange"><i data-lucide="activity"></i></div>
+        <div class="stat-info">
+          <h4>Active Rehab</h4>
+          <h2 id="statActiveRehab">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;"><i data-lucide="calendar"></i></div>
+        <div class="stat-info">
+          <h4>Appointments</h4>
+          <h2 id="statAppointments">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="trending-up"></i></div>
+        <div class="stat-info">
+          <h4>Revenue</h4>
+          <h2 id="statRevenue">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i data-lucide="trending-down"></i></div>
+        <div class="stat-info">
+          <h4>Expenses</h4>
+          <h2 id="statExpenses">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card" style="border-left: 3px solid var(--success);">
+        <div class="stat-icon green"><i data-lucide="check-circle"></i></div>
+        <div class="stat-info">
+          <h4>Net Profit</h4>
+          <h2 id="statNetProfit">&mdash;</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i data-lucide="alert-triangle"></i></div>
+        <div class="stat-info">
+          <h4>Low Stock</h4>
+          <h2 id="statLowStock">&mdash;</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-grid fade-in" style="margin-bottom: 2rem;">
+      <div class="card chart-card">
+        <div class="card-header">
+          <h3>Hospital Finance Trend (Revenue vs Expenses)</h3>
+        </div>
+        <div class="card-body">
+          <canvas id="dashboardFinancialChart"></canvas>
+        </div>
+      </div>
+      <div class="card chart-card">
+        <div class="card-header">
+          <h3>Rehabilitation Sessions & Active Patients</h3>
+        </div>
+        <div class="card-body">
+          <canvas id="dashboardRehabChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section Row -->
+    <div class="section-row">
+
+      <!-- Recent Patients -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <h3><i data-lucide="users" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:6px;color:var(--primary)"></i> Recent Patients</h3>
+          <a href="patients.html" class="btn btn-outline btn-sm">View All</a>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Condition</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="recentPatientsBody">
+              <tr><td colspan="4"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Low Stock Medicines -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <h3><i data-lucide="alert-triangle" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:6px;color:var(--warning)"></i> Low Stock Medicines</h3>
+          <a href="medicines.html" class="btn btn-outline btn-sm">Manage</a>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Medicine</th><th>Available</th><th>Status</th></tr>
+            </thead>
+            <tbody id="lowStockBody">
+              <tr><td colspan="3"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Prescriptions -->
+    <div class="card fade-in">
+      <div class="card-header">
+        <h3><i data-lucide="file-text" style="width:18px;height:18px;display:inline;vertical-align:middle;margin-right:6px;color:var(--accent)"></i> Recent Prescriptions</h3>
+        <a href="prescriptions.html" class="btn btn-outline btn-sm">View All</a>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Patient</th><th>Date</th><th>Doctor</th><th>Action</th></tr>
+          </thead>
+          <tbody id="recentRxBody">
+            <tr><td colspan="4"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Notifications Modal -->
+<div class="modal-overlay" id="notificationsModal" style="z-index: 1000;">
+  <div class="modal" style="max-width: 500px;">
+    <div class="modal-header">
+      <h2>Notifications & Alerts</h2>
+      <button class="modal-close" onclick="closeModal('notificationsModal')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body" id="notificationsModalBody" style="display:flex; flex-direction:column; gap:0.75rem; max-height:400px; overflow-y:auto; padding: 1.5rem;">
+      <div class="spinner"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('notificationsModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/patientRepository.js"></script>
+<script src="js/repositories/appointmentRepository.js"></script>
+<script src="js/repositories/rehabRepository.js"></script>
+<script src="js/repositories/medicineRepository.js"></script>
+<script src="js/repositories/prescriptionRepository.js"></script>
+<script src="js/repositories/invoiceRepository.js"></script>
+<script src="js/repositories/reportRepository.js"></script>
+<script src="js/repositories/profitAnalysisRepository.js"></script>
+<script src="js/repositories/diagnosticRepository.js"></script>
+<script src="js/repositories/surgeryRepository.js"></script>
+<script src="js/repositories/dashboardRepository.js"></script>
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script>
+  let charts = {};
+  let _dashboardInitialized = false;
+
+  // Timeout protection wrapper for promises
+  function withTimeout(promise, timeoutMs = 5000, fallback = []) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        console.warn(`[Dashboard Timeout] Request exceeded ${timeoutMs}ms. Using fallback.`);
+        resolve(fallback);
+      }, timeoutMs);
+
+      promise.then(
+        (res) => {
+          clearTimeout(timer);
+          resolve(res);
+        },
+        (err) => {
+          clearTimeout(timer);
+          console.error(`[Dashboard Error] Request failed:`, err);
+          resolve(fallback);
+        }
+      );
+    });
+  }
+
+  // Toggle notifications modal
+  async function toggleNotificationsModal() {
+    openModal('notificationsModal');
+    const container = document.getElementById('notificationsModalBody');
+    if (!container) return;
+    container.innerHTML = '<div class="spinner"></div>';
+    
+    try {
+      const notifications = await withTimeout(CMS.notifications.getAll(), 3000, []);
+      if (!notifications.length) {
+        container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">No notifications found.</div>';
+        return;
+      }
+
+      container.innerHTML = notifications.slice().reverse().map(n => {
+        let icon = 'bell';
+        let iconColor = 'var(--primary)';
+        if (n.type === 'Low Stock' || n.type === 'Expiry') { icon = 'alert-triangle'; iconColor = 'var(--danger)'; }
+        else if (n.type === 'Payment') { icon = 'credit-card'; iconColor = 'var(--warning)'; }
+        else if (n.type === 'Appointment') { icon = 'calendar'; iconColor = 'var(--accent)'; }
+
+        return `
+          <div class="alert alert-neutral" style="display:flex; align-items:center; gap:0.75rem; border-left:4px solid ${iconColor}; background:rgba(255,255,255,0.02); margin:0; padding:0.75rem 1rem;">
+            <i data-lucide="${icon}" style="color:${iconColor}; width:18px; height:18px; flex-shrink:0;"></i>
+            <div style="flex:1;">
+              <p style="margin:0; font-size:0.88rem; font-weight:500; color:var(--text-main);">${n.message}</p>
+              <p style="margin:0; font-size:0.72rem; color:var(--text-muted);">${formatDate(n.date || todayISO())}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (e) {
+      console.error("Notifications modal error:", e);
+      container.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:2rem;">Failed to load alerts.</div>';
+    } finally {
+      const spinner = container.querySelector('.spinner');
+      if (spinner) spinner.remove();
+    }
+    
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // Loader Named Function
+  async function loadDashboardData() {
+    // Date display
+    const dateEl = document.getElementById('todayDateStr');
+    if (dateEl) {
+      dateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    // Expose Dr. Sanjay dynamically
+    const welcomeName = document.getElementById('welcomeDrName');
+    if (welcomeName) welcomeName.textContent = window.CLINIC_INFO.doctorName;
+
+    // Define dashboard default states
+    let summary = {
+      totalPatients: 0,
+      todaysVisits: 0,
+      activeRehab: 0,
+      appointments: 0,
+      revenue: 0,
+      expenses: 0,
+      netProfit: 0,
+      lowStockCount: 0
+    };
+
+    let financeTrend = [];
+    let rehabStats = {
+      activePatients: 0,
+      completedPrograms: 0,
+      pendingPrograms: 0,
+      dailySessions: 0
+    };
+
+    let recentPatients = [];
+    let lowStockMeds = [];
+    let recentPrescriptions = [];
+    let notifications = [];
+    let allPatients = [];
+    let allPrescriptions = [];
+    let allInvoices = [];
+
+    // Query dashboard summary, trend and list data in parallel settling
+    try {
+      const results = await Promise.allSettled([
+        CMS.dashboard ? withTimeout(CMS.dashboard.getSummary(), 3000, summary) : Promise.resolve(summary),
+        CMS.dashboard ? withTimeout(CMS.dashboard.getFinanceTrend(), 3000, []) : Promise.resolve([]),
+        CMS.dashboard ? withTimeout(CMS.dashboard.getRehabStatistics(), 3000, rehabStats) : Promise.resolve(rehabStats),
+        window.PatientRepository ? withTimeout(window.PatientRepository.getRecent(5), 3000, []) : Promise.resolve([]),
+        window.MedicineRepository ? withTimeout(window.MedicineRepository.getLowStock(), 3000, []) : Promise.resolve([]),
+        window.PrescriptionRepository ? withTimeout(window.PrescriptionRepository.getRecent(5), 3000, []) : Promise.resolve([]),
+        withTimeout(CMS.notifications.getAll(), 3000, []),
+        window.PatientRepository ? withTimeout(window.PatientRepository.getAll(), 3000, []) : Promise.resolve([]),
+        window.PrescriptionRepository ? withTimeout(window.PrescriptionRepository.getAll(), 3000, []) : Promise.resolve([]),
+        window.InvoiceRepository ? withTimeout(window.InvoiceRepository.getAll(), 3000, []) : Promise.resolve([]),
+      ]);
+
+      summary = results[0].status === 'fulfilled' ? results[0].value || summary : summary;
+      financeTrend = results[1].status === 'fulfilled' ? results[1].value || [] : [];
+      rehabStats = results[2].status === 'fulfilled' ? results[2].value || rehabStats : rehabStats;
+      recentPatients = results[3].status === 'fulfilled' ? results[3].value || [] : [];
+      lowStockMeds = results[4].status === 'fulfilled' ? results[4].value || [] : [];
+      recentPrescriptions = results[5].status === 'fulfilled' ? results[5].value || [] : [];
+      notifications = results[6].status === 'fulfilled' ? results[6].value || [] : [];
+      allPatients = results[7].status === 'fulfilled' ? results[7].value || [] : [];
+      allPrescriptions = results[8].status === 'fulfilled' ? results[8].value || [] : [];
+      allInvoices = results[9].status === 'fulfilled' ? results[9].value || [] : [];
+
+      console.log("Dashboard: Loaded aggregated live summaries successfully.");
+    } catch (err) {
+      console.error("Dashboard loading error:", err);
+    }
+
+    // Print logs
+    console.log(`Patients returned: ${allPatients.length}`);
+    console.log(`Recent Patients returned: ${recentPatients.length}`);
+    console.log(`Prescriptions returned: ${allPrescriptions.length}`);
+    console.log(`Recent Prescriptions returned: ${recentPrescriptions.length}`);
+    console.log(`Invoices returned: ${allInvoices.length}`);
+    console.log(`Revenue: ${formatCurrency(summary.revenue)}`);
+    console.log(`Profit Summary loaded.`);
+
+    // 1. Populating stats cards from summary safely
+    const getSafeNum = (val) => {
+      const parsed = parseFloat(val);
+      return isNaN(parsed) || !isFinite(parsed) ? 0 : parsed;
+    };
+
+    const setCardValue = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+
+    setCardValue('statPatients', getSafeNum(summary.totalPatients));
+    setCardValue('statVisits', getSafeNum(summary.todaysVisits));
+    setCardValue('statActiveRehab', getSafeNum(summary.activeRehab));
+    setCardValue('statAppointments', getSafeNum(summary.appointments));
+    setCardValue('statRevenue', formatCurrency(getSafeNum(summary.revenue)));
+    setCardValue('statExpenses', formatCurrency(getSafeNum(summary.expenses)));
+    setCardValue('statNetProfit', formatCurrency(getSafeNum(summary.netProfit)));
+    setCardValue('statLowStock', getSafeNum(summary.lowStockCount));
+
+    // 2. Notification banner
+    try {
+      const unread = Array.isArray(notifications) ? notifications.filter(n => n && n.status === 'Unread') : [];
+      const notPanel = document.getElementById('notificationPanel');
+      if (notPanel) {
+        if (unread.length > 0) {
+          notPanel.style.display = 'block';
+          const notMsg = document.getElementById('notificationAlertMsg');
+          if (notMsg) {
+            notMsg.textContent = `⚠️ Lakshmi HIS Alerts: You have ${unread.length} unread updates.`;
+          }
+        } else {
+          notPanel.style.display = 'none';
+        }
+      }
+    } catch (e) { console.error("Notification panel error:", e); }
+
+    // 3. Recent patients
+    try {
+      const rpBody = document.getElementById('recentPatientsBody');
+      if (rpBody) {
+        rpBody.innerHTML = !recentPatients.length ? `<tr><td colspan="4" style="text-align:center;padding:2rem;">No patients.</td></tr>` : recentPatients.map(p => `
+          <tr>
+            <td class="td-name">${p.name || 'Unknown'}</td>
+            <td class="td-light">${p.condition || '&mdash;'}</td>
+            <td class="td-light">${formatDate(p.dateOfVisit)}</td>
+            <td><a href="patients.html" class="btn btn-ghost btn-sm btn-icon"><i data-lucide="arrow-right"></i></a></td>
+          </tr>
+        `).join('');
+      }
+    } catch (e) { console.error("Recent patients rendering error:", e); }
+
+    // 4. Low stock
+    try {
+      const lsBody = document.getElementById('lowStockBody');
+      if (lsBody) {
+        lsBody.innerHTML = !lowStockMeds.length ? `<tr><td colspan="3" style="text-align:center;padding:2rem;">Stock levels good ✔</td></tr>` : lowStockMeds.slice(0, 5).map(m => `
+          <tr>
+            <td class="td-name">${m.name || 'Unknown'}</td>
+            <td>${m.availableQty} / ${m.totalQty}</td>
+            <td><span class="badge ${m.availableQty <= 3 ? 'badge-danger' : 'badge-warning'}">${m.availableQty <= 3 ? 'Critical' : 'Low Stock'}</span></td>
+          </tr>
+        `).join('');
+      }
+    } catch (e) { console.error("Low stock rendering error:", e); }
+
+    // 5. Recent prescriptions
+    try {
+      const rxBody = document.getElementById('recentRxBody');
+      if (rxBody) {
+        rxBody.innerHTML = !recentPrescriptions.length ? `<tr><td colspan="4" style="text-align:center;padding:2rem;">No prescriptions.</td></tr>` : recentPrescriptions.map(rx => `
+          <tr>
+            <td class="td-name">${rx.patientName || '&mdash;'}</td>
+            <td class="td-light">${formatDate(rx.date)}</td>
+            <td class="td-light">${rx.doctorName || rx.doctor || 'Dr. C. SANJAY'}</td>
+            <td>
+              <button class="btn btn-primary btn-sm" onclick="generatePrescriptionPDF('${rx.id}')">
+                <i data-lucide="printer"></i> Print
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    } catch (e) { console.error("Recent prescriptions rendering error:", e); }
+
+    // 6. Draw Dashboard Charts
+    try {
+      drawLiveFinancialChart(financeTrend);
+    } catch (e) { console.error("Error drawing financial chart:", e); }
+
+    try {
+      drawLiveRehabChart(rehabStats);
+    } catch (e) { console.error("Error drawing rehab chart:", e); }
+
+    // Clean up spinners inside tables/widgets
+    const spinners = document.querySelectorAll('.spinner');
+    spinners.forEach(s => {
+      if (s.parentNode !== document.getElementById('notificationsModalBody')) {
+        s.remove();
+      }
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // Check state and init once
+  function initDashboard() {
+    if (_dashboardInitialized) return;
+    _dashboardInitialized = true;
+
+    // Wire Refresh button
+    const refreshBtn = document.getElementById('btnDashboardRefresh');
+    if (refreshBtn) {
+      refreshBtn.onclick = () => {
+        loadDashboardData().catch(err => console.error("Dashboard refresh error:", err));
+      };
+    }
+
+    if (window.CMS && window.CMS.ready) {
+      loadDashboardData().catch(console.error);
+    } else {
+      document.addEventListener('cms:ready', () => {
+        loadDashboardData().catch(console.error);
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+  } else {
+    initDashboard();
+  }
+
+  // Real-time refresh when event is triggered
+  document.addEventListener('dashboard-refresh', () => {
+    loadDashboardData().catch(console.error);
+  });
+
+  // Finance trend line & bar chart from live trends
+  function drawLiveFinancialChart(financeTrend) {
+    const ctx = document.getElementById('dashboardFinancialChart');
+    if (!ctx) return;
+    if (charts.finance) { charts.finance.destroy(); charts.finance = null; }
+
+    const labels = [];
+    const revenueData = [];
+    const expenseData = [];
+
+    if (Array.isArray(financeTrend) && financeTrend.length > 0) {
+      financeTrend.forEach(ft => {
+        labels.push(formatDate(ft.date));
+        revenueData.push(parseFloat(ft.revenue || 0));
+        expenseData.push(parseFloat(ft.expenses || 0));
+      });
+    }
+
+    if (labels.length === 0) {
+      labels.push("No data");
+      revenueData.push(0);
+      expenseData.push(0);
+    }
+
+    if (!window.Chart) return;
+
+    charts.finance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Revenue (\u20B9)',
+            data: revenueData,
+            backgroundColor: 'rgba(20, 184, 166, 0.85)',
+            borderColor: 'rgba(20, 184, 166, 1)',
+            borderRadius: 4
+          },
+          {
+            label: 'Expenses (\u20B9)',
+            data: expenseData,
+            backgroundColor: 'rgba(244, 63, 94, 0.85)',
+            borderColor: 'rgba(244, 63, 94, 1)',
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#94a3b8' } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+          y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+        }
+      }
+    });
+  }
+
+  // Active Rehab vs Appointments chart from live stats
+  function drawLiveRehabChart(rehabStats) {
+    const ctx = document.getElementById('dashboardRehabChart');
+    if (!ctx) return;
+    if (charts.rehab) { charts.rehab.destroy(); charts.rehab = null; }
+
+    const active = rehabStats ? rehabStats.activePatients || 0 : 0;
+    const completed = rehabStats ? rehabStats.completedPrograms || 0 : 0;
+    const pending = rehabStats ? rehabStats.pendingPrograms || 0 : 0;
+
+    if (!window.Chart) return;
+
+    charts.rehab = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Active Rehab', 'Completed Rehab', 'Pending Plans'],
+        datasets: [{
+          data: [active, completed, pending],
+          backgroundColor: [
+            'rgba(14, 165, 233, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(245, 158, 11, 0.8)'
+          ],
+          borderColor: 'var(--bg-card)',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+        }
+      }
+    });
+  }
+</script>
+</body>
+</html>
+</body>
+</html>

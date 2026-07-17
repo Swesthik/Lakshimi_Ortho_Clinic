@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing &amp; Invoices | Lakshmi HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=5">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<div class="cms-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i data-lucide="activity"></i>Revive<span>CMS</span></div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav"></nav>
+    <div class="sidebar-footer"></div>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn"><i data-lucide="menu"></i></button>
+      <h1 class="page-title">Billing &amp; Invoices</h1>
+    </div>
+    <div class="topbar-right" style="display:flex; gap:0.5rem;">
+      <button class="btn btn-outline" id="recordPaymentBtn"><i data-lucide="credit-card"></i> Record Payment</button>
+      <button class="btn btn-primary" id="createInvoiceBtn"><i data-lucide="plus"></i> New Invoice</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Stats Banner -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 1.5rem;">
+      <div class="stat-card">
+        <div class="stat-icon blue"><i data-lucide="calculator"></i></div>
+        <div class="stat-info">
+          <h4>Total Invoiced</h4>
+          <h2 id="statTotalInvoiced">&#8377;0.00</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="trending-up"></i></div>
+        <div class="stat-info">
+          <h4>Collected Payments</h4>
+          <h2 id="statCollected">&#8377;0.00</h2>
+        </div>
+      </div>
+      <div class="stat-card" style="border-left: 3px solid var(--danger);">
+        <div class="stat-icon red"><i data-lucide="clock"></i></div>
+        <div class="stat-info">
+          <h4>Outstanding Balance</h4>
+          <h2 id="statOutstanding">&#8377;0.00</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;"><i data-lucide="file-check"></i></div>
+        <div class="stat-info">
+          <h4>Pending / Unpaid</h4>
+          <h2 id="statPendingInvoices">0</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar" style="margin-bottom:1.5rem;">
+      <div class="search-input-wrap">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchInvoice" placeholder="Search by patient or invoice no...">
+      </div>
+      <select id="invoiceStatusFilter" style="padding:0.7rem 1rem; border:1.5px solid var(--border); border-radius:50px; background:var(--bg-main); font-size:0.9rem;">
+        <option value="">All Statuses</option>
+        <option value="Paid">Paid</option>
+        <option value="Partial">Partial</option>
+        <option value="Unpaid">Unpaid</option>
+      </select>
+    </div>
+
+    <!-- Invoices List Table -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Hospital Invoices</h3>
+        <span id="invoiceCount" class="badge badge-primary">0 invoices</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Invoice No</th>
+              <th>Patient</th>
+              <th>Date</th>
+              <th style="text-align:right;">Total Amount</th>
+              <th style="text-align:right;">Paid</th>
+              <th style="text-align:right;">Balance Due</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceTableBody">
+            <tr><td colspan="8"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- 1. Create / Edit Invoice Modal -->
+<div class="modal-overlay" id="invoiceModal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <h2 id="invoiceModalTitle">New Invoice</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="invoiceForm" novalidate>
+        <input type="hidden" id="invoiceId">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="form-group">
+            <label>Patient *</label>
+            <select id="invPatientId" required>
+              <option value="">&mdash; Select Patient &mdash;</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Invoice Number *</label>
+              <input type="text" id="invNo" required readonly placeholder="Generating...">
+            </div>
+            <div class="form-group">
+              <label>Invoice Date *</label>
+              <input type="date" id="invDate" required>
+            </div>
+          </div>
+          
+          <div style="border-top:1px solid var(--border); padding-top:1rem; margin-top:0.5rem;">
+            <h4 style="margin:0 0 0.75rem 0; font-size:0.95rem; color:var(--primary);">Billable Line Items</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:0.75rem;">
+              <div class="form-group">
+                <label>Consultation (&#8377;)</label>
+                <input type="number" id="invConsult" value="0" min="0" oninput="recalcTotal()">
+              </div>
+              <div class="form-group">
+                <label>Pharmacy (&#8377;)</label>
+                <input type="number" id="invMedicine" value="0" min="0" oninput="recalcTotal()">
+              </div>
+              <div class="form-group">
+                <label>Therapy &amp; Rehab (&#8377;)</label>
+                <input type="number" id="invTherapy" value="0" min="0" oninput="recalcTotal()">
+              </div>
+              <div class="form-group">
+                <label>Surgery/Procedure (&#8377;)</label>
+                <input type="number" id="invSurgery" value="0" min="0" oninput="recalcTotal()">
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-top:0.5rem; align-items:center;">
+            <div class="form-group">
+              <label style="font-size:1rem; font-weight:700;">Grand Total (&#8377;)</label>
+              <input type="number" id="invTotal" value="0" readonly style="font-weight:800; font-size:1.1rem; color:var(--primary); background:rgba(0,0,0,0.15);">
+            </div>
+            <div class="form-group">
+              <label>Initial Status</label>
+              <select id="invStatus">
+                <option value="Unpaid">Unpaid</option>
+                <option value="Partial">Partial</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Notes / Comments</label>
+            <textarea id="invNotes" placeholder="Description of consultation, physiotherapy plans, or pharmacy supplies..." style="height:60px;"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="saveInvoiceBtn"><i data-lucide="save"></i> Save Invoice</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Record Payment Modal -->
+<div class="modal-overlay" id="paymentModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>Record Receipt Payment</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="paymentForm" novalidate>
+        <div class="form-group">
+          <label>Select Patient Invoice *</label>
+          <select id="payInvoiceId" required onchange="updatePayOutstandingLabel()">
+            <option value="">&mdash; Choose Invoice &mdash;</option>
+          </select>
+          <span id="payOutstandingLabel" style="font-size:0.8rem; font-weight:700; color:var(--danger); display:block; margin-top:4px;"></span>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+          <div class="form-group">
+            <label>Amount to Pay (&#8377;) *</label>
+            <input type="number" id="payAmount" min="1" required>
+          </div>
+          <div class="form-group">
+            <label>Payment Method *</label>
+            <select id="payMethod" required>
+              <option value="UPI">UPI (GPay/PhonePe)</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Payment Date *</label>
+          <input type="date" id="payDate" required>
+        </div>
+        <div class="form-group">
+          <label>Remarks</label>
+          <input type="text" id="payNotes" placeholder="Transaction ref no or notes...">
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="savePaymentBtn"><i data-lucide="check"></i> Confirm Payment</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/patientRepository.js"></script>
+<script src="js/repositories/invoiceRepository.js"></script>
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script>
+let allInvoices = [];
+let allPatients = [];
+let editingInvoiceId = null;
+
+function hideLoadingSpinner() {
+  renderInvoices();
+}
+
+document.addEventListener('cms:ready', async () => {
+  try {
+    await loadData();
+  } catch (error) {
+    console.error("Billing Error:", error);
+    showToast(error.message || "Unable to load billing data", "error");
+  } finally {
+    setupEventListeners();
+    hideLoadingSpinner();
+  }
+});
+
+async function loadData() {
+  try {
+    const results = await Promise.allSettled([
+      CMS.invoices.getAll(),
+      CMS.patients.getAll()
+    ]);
+
+    allInvoices = results[0].status === 'fulfilled' ? results[0].value : [];
+    allPatients = results[1].status === 'fulfilled' ? results[1].value : [];
+
+    if (results[0].status === 'rejected') console.error('Failed to load invoices:', results[0].reason);
+    if (results[1].status === 'rejected') console.error('Failed to load patients:', results[1].reason);
+  } catch (err) {
+    console.error('Error loading data list:', err);
+  }
+
+  // Populate patient dropdown
+  const select = document.getElementById('invPatientId');
+  if (select) {
+    select.innerHTML = '<option value="">&mdash; Select Patient &mdash;</option>' + 
+      allPatients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
+    
+  updateStatistics();
+  populatePayInvoiceDropdown();
+}
+
+function updateStatistics() {
+  const fin = window.HospitalFinanceService.calculate(allInvoices, []);
+  
+  document.getElementById('statTotalInvoiced').textContent = formatCurrency(fin.totalInvoiced);
+  document.getElementById('statCollected').textContent = formatCurrency(fin.totalCollected);
+  document.getElementById('statOutstanding').textContent = formatCurrency(fin.outstandingBalance);
+  document.getElementById('statPendingInvoices').textContent = fin.pendingInvoices;
+}
+
+function populatePayInvoiceDropdown(selectedInvoiceId = null) {
+  const select = document.getElementById('payInvoiceId');
+  if (!select) return;
+  
+  // Display only Unpaid or Partial invoices
+  const unpaidOrPartial = (allInvoices || []).filter(inv => inv.status === 'Unpaid' || inv.status === 'Partial');
+  
+  select.innerHTML = '<option value="">&mdash; Choose Invoice &mdash;</option>' + 
+    unpaidOrPartial.map(inv => `<option value="${inv.id}" ${selectedInvoiceId === inv.id ? 'selected' : ''}>${inv.invoiceNo} - ${inv.patientName} (Due: ${formatCurrency(inv.balanceDue)})</option>`).join('');
+    
+  updatePayOutstandingLabel();
+}
+
+async function updatePayOutstandingLabel() {
+  const select = document.getElementById('payInvoiceId');
+  if (!select) return;
+  const invoiceId = select.value;
+  const label = document.getElementById('payOutstandingLabel');
+  if (!label) return;
+
+  if (!invoiceId) {
+    label.textContent = '';
+    return;
+  }
+  
+  const inv = (allInvoices || []).find(i => i.id === invoiceId);
+  if (!inv) return;
+  
+  label.textContent = `Outstanding Balance Due: ${formatCurrency(inv.balanceDue)}`;
+  document.getElementById('payAmount').value = inv.balanceDue.toFixed(2);
+}
+
+function setupEventListeners() {
+  document.getElementById('createInvoiceBtn').addEventListener('click', () => {
+    editingInvoiceId = null;
+    document.getElementById('invoiceModalTitle').textContent = 'New Invoice';
+    document.getElementById('invoiceForm').reset();
+    document.getElementById('invoiceId').value = '';
+    document.getElementById('invDate').value = todayISO();
+    document.getElementById('invNo').value = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    openModal('invoiceModal');
+  });
+  
+  document.getElementById('recordPaymentBtn').addEventListener('click', () => {
+    document.getElementById('paymentForm').reset();
+    document.getElementById('payDate').value = todayISO();
+    populatePayInvoiceDropdown();
+    openModal('paymentModal');
+  });
+  
+  document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
+  document.getElementById('savePaymentBtn').addEventListener('click', savePayment);
+  
+  document.getElementById('searchInvoice').addEventListener('input', renderInvoices);
+  document.getElementById('invoiceStatusFilter').addEventListener('change', renderInvoices);
+}
+
+function recalcTotal() {
+  const consult = parseFloat(document.getElementById('invConsult').value) || 0;
+  const medicine = parseFloat(document.getElementById('invMedicine').value) || 0;
+  const therapy = parseFloat(document.getElementById('invTherapy').value) || 0;
+  const surgery = parseFloat(document.getElementById('invSurgery').value) || 0;
+  
+  document.getElementById('invTotal').value = (consult + medicine + therapy + surgery).toFixed(2);
+}
+
+async function renderInvoices() {
+  const tbody = document.getElementById('invoiceTableBody');
+  if (!tbody) return;
+  const q = document.getElementById('searchInvoice').value.toLowerCase().trim();
+  const status = document.getElementById('invoiceStatusFilter').value;
+  
+  const filtered = (allInvoices || []).filter(i => {
+    const invoiceNo = (i.invoiceNo || '').toLowerCase();
+    const patientName = (i.patientName || '').toLowerCase();
+    const paymentStatus = (i.status || '').toLowerCase();
+    const dateStr = i.date ? formatDate(i.date).toLowerCase() : '';
+    
+    const matchesSearch = !q || 
+      invoiceNo.includes(q) || 
+      patientName.includes(q) || 
+      (i.patientId || '').toString().toLowerCase().includes(q) ||
+      paymentStatus.includes(q) || 
+      dateStr.includes(q);
+
+    const matchesFilter = !status || i.status === status;
+
+    return matchesSearch && matchesFilter;
+  });
+  
+  document.getElementById('invoiceCount').textContent = `${filtered.length} invoices`;
+  
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><i data-lucide="credit-card"></i><h3>No invoices found</h3><p>Create your first invoice to bill patients</p></div></td></tr>`;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+  
+  tbody.innerHTML = filtered.map(inv => {
+    let statCls = 'badge-primary';
+    if (inv.status === 'Paid') statCls = 'badge-success';
+    else if (inv.status === 'Partial') statCls = 'badge-warning';
+    else if (inv.status === 'Unpaid') statCls = 'badge-danger';
+    
+    return `
+      <tr>
+        <td class="td-name">${inv.invoiceNo}</td>
+        <td style="font-weight:600; cursor:pointer;" onclick="navigateToPatientProfile('${inv.patientId}')">${inv.patientName}</td>
+        <td class="td-light">${formatDate(inv.date)}</td>
+        <td style="text-align:right; font-weight:700; color:#0d9488;">${formatCurrency(inv.totalAmount)}</td>
+        <td style="text-align:right; font-weight:600; color:var(--success);">${formatCurrency(inv.paidAmount)}</td>
+        <td style="text-align:right; font-weight:600; color:${inv.balanceDue > 0 ? 'var(--danger)' : 'var(--text-muted)'};">${formatCurrency(inv.balanceDue)}</td>
+        <td><span class="badge ${statCls}">${inv.status}</span></td>
+        <td>
+          <div style="display:flex;gap:0.4rem;">
+            <button class="btn btn-primary btn-sm" onclick="generateInvoicePDF('${inv.id}')"><i data-lucide="printer"></i> Print</button>
+            ${inv.balanceDue > 0 ? `<button class="btn btn-accent btn-sm" onclick="openDirectPaymentModal('${inv.id}')"><i data-lucide="credit-card"></i> Receipt</button>` : ''}
+            <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="editInvoice('${inv.id}')"><i data-lucide="edit-2"></i></button>
+            <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="deleteInvoice('${inv.id}')" style="color:var(--danger)"><i data-lucide="trash-2"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  if (window.lucide) lucide.createIcons();
+}
+
+function openDirectPaymentModal(invoiceId) {
+  document.getElementById('paymentForm').reset();
+  document.getElementById('payDate').value = todayISO();
+  populatePayInvoiceDropdown(invoiceId);
+  openModal('paymentModal');
+}
+
+async function saveInvoice() {
+  const saveBtn = document.getElementById('saveInvoiceBtn');
+  if (saveBtn) saveBtn.disabled = true;
+
+  try {
+    const patientId = document.getElementById('invPatientId').value;
+    const invoiceNo = document.getElementById('invNo').value;
+    const date = document.getElementById('invDate').value;
+    
+    const consultChargesStr = document.getElementById('invConsult').value;
+    const medicineChargesStr = document.getElementById('invMedicine').value;
+    const therapyChargesStr = document.getElementById('invTherapy').value;
+    const surgeryChargesStr = document.getElementById('invSurgery').value;
+
+    // Validation: Prevent negative values, letters in amount fields
+    if (/[^0-9.]/.test(consultChargesStr) || /[^0-9.]/.test(medicineChargesStr) || /[^0-9.]/.test(therapyChargesStr) || /[^0-9.]/.test(surgeryChargesStr)) {
+      showToast('Amount fields must contain valid positive numbers.', 'error');
+      return;
+    }
+
+    const consultCharges = parseFloat(consultChargesStr) || 0;
+    const medicineCharges = parseFloat(medicineChargesStr) || 0;
+    const therapyCharges = parseFloat(therapyChargesStr) || 0;
+    const surgeryCharges = parseFloat(surgeryChargesStr) || 0;
+
+    if (consultCharges < 0 || medicineCharges < 0 || therapyCharges < 0 || surgeryCharges < 0) {
+      showToast('Charges cannot be negative.', 'error');
+      return;
+    }
+
+    if (!patientId) {
+      showToast('Please select a patient.', 'error');
+      return;
+    }
+    if (!invoiceNo) {
+      showToast('Invoice number is required.', 'error');
+      return;
+    }
+    if (!date) {
+      showToast('Please select a valid date.', 'error');
+      return;
+    }
+
+    const totalAmount = consultCharges + medicineCharges + therapyCharges + surgeryCharges;
+    if (totalAmount <= 0) {
+      showToast('Grand total must be greater than zero.', 'error');
+      return;
+    }
+
+    const patient = allPatients.find(p => p.id === patientId);
+    if (!patient) {
+      showToast('Patient not found.', 'error');
+      return;
+    }
+
+    // Check duplicate invoice number
+    const duplicate = allInvoices.find(inv => inv.invoiceNo === invoiceNo && inv.id !== editingInvoiceId);
+    if (duplicate) {
+      showToast(`Invoice number ${invoiceNo} already exists.`, 'error');
+      return;
+    }
+
+    const status = document.getElementById('invStatus').value;
+    const notes = document.getElementById('invNotes').value;
+
+    let paidAmount = 0;
+    let balanceDue = totalAmount;
+
+    if (status === 'Paid') {
+      paidAmount = totalAmount;
+      balanceDue = 0;
+    } else if (status === 'Partial') {
+      if (editingInvoiceId) {
+        const existing = allInvoices.find(i => i.id === editingInvoiceId);
+        paidAmount = existing ? parseFloat(existing.paidAmount || 0) : 0;
+        if (paidAmount > totalAmount) paidAmount = totalAmount;
+        balanceDue = totalAmount - paidAmount;
+      } else {
+        paidAmount = totalAmount / 2; // Default to half total amount
+        balanceDue = totalAmount - paidAmount;
+      }
+    }
+
+    const invData = {
+      patientId,
+      patientName: patient.name,
+      invoiceNumber: invoiceNo,
+      invoiceDate: date,
+      consultationFee: consultCharges,
+      pharmacyFee: medicineCharges,
+      therapyFee: therapyCharges,
+      surgeryFee: surgeryCharges,
+      totalAmount,
+      paidAmount,
+      balanceDue,
+      paymentMethod: 'UPI',
+      paymentStatus: status,
+      notes
+    };
+
+    if (editingInvoiceId) {
+      await CMS.invoices.update({ ...invData, id: editingInvoiceId });
+      showToast('Invoice updated successfully!', 'success');
+    } else {
+      await CMS.invoices.add(invData);
+      showToast('Invoice successfully generated!', 'success');
+    }
+    
+    closeModal('invoiceModal');
+    await loadData();
+    renderInvoices();
+  } catch (error) {
+    console.error("Billing Error:", error);
+    showToast(error.message || "Unable to save invoice", "error");
+  } finally {
+    if (saveBtn) saveBtn.disabled = false;
+    hideLoadingSpinner();
+  }
+}
+
+async function editInvoice(id) {
+  try {
+    const inv = await CMS.invoices.getById(id);
+    editingInvoiceId = id;
+    
+    document.getElementById('invoiceModalTitle').textContent = 'Edit Invoice';
+    document.getElementById('invoiceId').value = inv.id;
+    document.getElementById('invPatientId').value = inv.patientId;
+    document.getElementById('invNo').value = inv.invoiceNo;
+    document.getElementById('invDate').value = inv.date;
+    document.getElementById('invConsult').value = inv.consultCharges || 0;
+    document.getElementById('invMedicine').value = inv.medicineCharges || 0;
+    document.getElementById('invTherapy').value = inv.therapyCharges || 0;
+    document.getElementById('invSurgery').value = inv.surgeryCharges || 0;
+    document.getElementById('invTotal').value = inv.totalAmount;
+    document.getElementById('invStatus').value = inv.status;
+    document.getElementById('invNotes').value = inv.notes || '';
+    
+    openModal('invoiceModal');
+  } catch (error) {
+    console.error("Billing Error:", error);
+    showToast(error.message || "Unable to edit invoice", "error");
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+
+async function savePayment() {
+  const savePayBtn = document.getElementById('savePaymentBtn');
+  if (savePayBtn) savePayBtn.disabled = true;
+
+  try {
+    const invoiceId = document.getElementById('payInvoiceId').value;
+    const amountStr = document.getElementById('payAmount').value;
+    const method = document.getElementById('payMethod').value;
+    const date = document.getElementById('payDate').value;
+    const notes = document.getElementById('payNotes').value.trim();
+    
+    if (!invoiceId) {
+      showToast('Please select an invoice.', 'error');
+      return;
+    }
+    if (/[^0-9.]/.test(amountStr)) {
+      showToast('Payment amount must be a valid positive number.', 'error');
+      return;
+    }
+
+    const amount = parseFloat(amountStr) || 0;
+    if (amount <= 0) {
+      showToast('Payment amount must be greater than zero.', 'error');
+      return;
+    }
+    if (!date) {
+      showToast('Please specify a payment date.', 'error');
+      return;
+    }
+    
+    const inv = allInvoices.find(i => i.id === invoiceId);
+    if (!inv) {
+      showToast('Invoice not found.', 'error');
+      return;
+    }
+
+    const paidSum = parseFloat(inv.paidAmount || 0);
+    const remaining = parseFloat(inv.totalAmount || 0) - paidSum;
+    
+    if (amount > remaining + 0.01) {
+      showToast(`Payment exceeds outstanding balance of ${formatCurrency(remaining)}.`, 'error');
+      return;
+    }
+    
+    const newPaid = paidSum + amount;
+    const newBalance = parseFloat(inv.totalAmount || 0) - newPaid;
+    
+    let newStatus = 'Partial';
+    if (newBalance <= 0.01) {
+      newStatus = 'Paid';
+    } else if (newPaid <= 0) {
+      newStatus = 'Unpaid';
+    }
+    
+    await CMS.invoices.update({
+      id: inv.id,
+      paidAmount: newPaid,
+      balanceDue: newBalance,
+      paymentMethod: method,
+      paymentStatus: newStatus,
+      notes: (inv.notes ? inv.notes + "\n" : "") + `Payment: Received ${formatCurrency(amount)} via ${method} on ${date}. ${notes}`
+    });
+
+    // Log in patient visits / history
+    try {
+      await CMS.visits.add({
+        patientId: inv.patientId,
+        date,
+        notes: `Payment Receipt: Received ${formatCurrency(amount)} via ${method} for Invoice ${inv.invoiceNo}. Status updated to ${newStatus}`
+      });
+    } catch (visitErr) {
+      console.warn("Failed to log visit:", visitErr);
+    }
+    
+    showToast('Payment recorded successfully!', 'success');
+    closeModal('paymentModal');
+    await loadData();
+    renderInvoices();
+  } catch (error) {
+    console.error("Billing Error:", error);
+    showToast(error.message || "Unable to record payment", "error");
+  } finally {
+    if (savePayBtn) savePayBtn.disabled = false;
+    hideLoadingSpinner();
+  }
+}
+
+async function deleteInvoice(id) {
+  if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) return;
+  try {
+    await CMS.invoices.delete(id);
+    showToast('Invoice deleted successfully.', 'warning');
+    await loadData();
+    renderInvoices();
+  } catch (error) {
+    console.error("Billing Error:", error);
+    showToast(error.message || "Unable to delete invoice", "error");
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+
+function navigateToPatientProfile(patientId) {
+  sessionStorage.setItem('openPatientProfileId', patientId);
+  window.location.href = 'patients.html';
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+
+async function generateInvoicePDF(invoiceId) {
+  try {
+    const invoice = allInvoices.find(i => i.id === invoiceId);
+    if (!invoice) { showToast('Invoice not found.', 'error'); return; }
+
+    const patient = allPatients.find(p => p.id === invoice.patientId);
+
+    const paid = parseFloat(invoice.paidAmount || 0);
+    const due = parseFloat(invoice.balanceDue || 0);
+
+    const payRows = paid > 0 ? `
+      <tr>
+        <td>${formatDate(invoice.date)}</td>
+        <td>${invoice.paymentMethod || '—'}</td>
+        <td style="text-align:right;">${formatCurrency(paid)}</td>
+      </tr>` : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice — ${invoice.invoiceNo}</title>
+  <style>
+    ${basePrintCSS()}
+  </style>
+</head>
+<body>
+  <div class="prescription-page">
+    <!-- Centered Watermark -->
+    <div class="watermark">
+      <img src="assets/Prescription_watermark.svg?v=1.0.1" alt="Watermark">
+    </div>
+
+    <!-- Header Section -->
+    <header class="header">
+      <!-- LEFT COLUMN -->
+      <div class="left">
+        <h2>Lakshmi Ortho &amp; Pain Clinic</h2>
+        <p>99, West Car Street</p>
+        <p>Tiruchendur - 628215</p>
+      </div>
+
+      <!-- CENTER COLUMN -->
+      <div class="center">
+        <div class="logo">
+          <img src="assets/Prescription_logo.svg?v=1.0.1" alt="Clinic Logo">
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="right">
+        <h2>Dr. C. SANJAY M.S.(ORTHO)</h2>
+        <p>Consultant Trauma,</p>
+        <p>Replacement &amp; Spine Surgery</p>
+        <p>Reg. No.: 100860</p>
+      </div>
+    </header>
+
+    <div class="divider"></div>
+
+    <!-- Centered maroon title -->
+    <div class="invoice-title" style="font-size: 24px; color: #7a1f2b; font-weight: bold; margin-bottom: 5mm; text-align: center; letter-spacing: 1px;">
+      INVOICE
+    </div>
+
+    <!-- Write area wrapper -->
+    <div class="write-area">
+      <!-- Patient Info Section -->
+      <section class="patient-info">
+        <div><strong>Patient Name:</strong><span>${patient?.name || invoice.patientName || '—'}</span></div>
+        <div><strong>Date:</strong><span>${formatDate(invoice.date)}</span></div>
+        <div><strong>Patient ID:</strong><span>${patient?.patientCode || patient?.id || '—'}</span></div>
+        <div><strong>Mobile:</strong><span>${patient?.mobile || '—'}</span></div>
+        <div><strong>Invoice Number:</strong><span>${invoice.invoiceNo || '—'}</span></div>
+        <div><strong>Payment Method:</strong><span>${invoice.paymentMethod || '—'}</span></div>
+        <div class="full"><strong>Doctor:</strong><span>Dr. C. SANJAY M.S.(ORTHO)</span></div>
+      </section>
+
+      <!-- Invoice Table -->
+      <table class="medicine-table" style="margin-top: 6mm;">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th style="text-align: center; width: 60px;">Qty</th>
+            <th style="text-align: right; width: 100px;">Rate</th>
+            <th style="text-align: right; width: 120px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${parseFloat(invoice.consultCharges || 0) > 0 ? `
+            <tr>
+              <td>Consultation Fee</td>
+              <td style="text-align: center;">1</td>
+              <td style="text-align: right;">${formatCurrency(invoice.consultCharges)}</td>
+              <td style="text-align: right;">${formatCurrency(invoice.consultCharges)}</td>
+            </tr>` : ''}
+          ${parseFloat(invoice.therapyCharges || 0) > 0 ? `
+            <tr>
+              <td>Physiotherapy &amp; Rehabilitation</td>
+              <td style="text-align: center;">1</td>
+              <td style="text-align: right;">${formatCurrency(invoice.therapyCharges)}</td>
+              <td style="text-align: right;">${formatCurrency(invoice.therapyCharges)}</td>
+            </tr>` : ''}
+          ${parseFloat(invoice.medicineCharges || 0) > 0 ? `
+            <tr>
+              <td>Pharmacy &amp; Medicines</td>
+              <td style="text-align: center;">1</td>
+              <td style="text-align: right;">${formatCurrency(invoice.medicineCharges)}</td>
+              <td style="text-align: right;">${formatCurrency(invoice.medicineCharges)}</td>
+            </tr>` : ''}
+          ${parseFloat(invoice.surgeryCharges || 0) > 0 ? `
+            <tr>
+              <td>Surgery &amp; Procedure Fees</td>
+              <td style="text-align: center;">1</td>
+              <td style="text-align: right;">${formatCurrency(invoice.surgeryCharges)}</td>
+              <td style="text-align: right;">${formatCurrency(invoice.surgeryCharges)}</td>
+            </tr>` : ''}
+        </tbody>
+      </table>
+
+      <!-- Totals Section -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 15px;">
+        <table style="width: 280px; font-size: 12px; border-collapse: collapse; color: #333;">
+          <tbody>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Gross Total:</td>
+              <td style="padding: 5px 0; text-align: right; font-weight: bold;">${formatCurrency(invoice.totalAmount)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Discount:</td>
+              <td style="padding: 5px 0; text-align: right;">${invoice.discount !== undefined ? formatCurrency(invoice.discount) : formatCurrency(0)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Tax:</td>
+              <td style="padding: 5px 0; text-align: right;">${invoice.tax !== undefined ? formatCurrency(invoice.tax) : formatCurrency(0)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Grand Total:</td>
+              <td style="padding: 5px 0; text-align: right; font-weight: bold; color: #7a1f2b;">${formatCurrency(invoice.totalAmount)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Amount Paid:</td>
+              <td style="padding: 5px 0; text-align: right; font-weight: bold; color: #10b981;">${formatCurrency(paid)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Balance Due:</td>
+              <td style="padding: 5px 0; text-align: right; font-weight: bold; color: ${due > 0 ? '#ef4444' : '#10b981'};">${formatCurrency(due)}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #eee;">
+              <td style="padding: 5px 0; font-weight: bold; color: #7a1f2b;">Status:</td>
+              <td style="padding: 5px 0; text-align: right; font-weight: bold;">${invoice.status || '—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      ${payRows ? `
+      <div style="margin-top: 15px;">
+        <div style="font-size: 12px; font-weight: bold; color: #7a1f2b; margin-bottom: 5px;">Payment History</div>
+        <table class="medicine-table" style="margin-top: 0;">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Method</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${payRows}
+          </tbody>
+        </table>
+      </div>` : ''}
+
+      <!-- Blank spacer to push signature to the bottom -->
+      <div style="flex: 1;"></div>
+
+      <!-- Doctor Signature Block -->
+      <div class="signature-block">
+        <div class="sig-name">Dr. C. SANJAY</div>
+        <div class="sig-title">Authorized Signature</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="box">
+        <b>Consultation Time</b>
+        6.00 PM to 9.00 PM
+      </div>
+      <div class="box" style="text-align:right">
+        <b>For Appointment</b>
+        8903783462
+      </div>
+    </footer>
+  </div>
+</body>
+</html>`;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { showToast('Please allow pop-ups for printing.', 'error'); return; }
+    safePrint(printWindow, html);
+  } catch (error) {
+    console.error("Print Error:", error);
+    showToast('Failed to generate print preview.', 'error');
+  }
+}
+</script>
+</body>
+</html>

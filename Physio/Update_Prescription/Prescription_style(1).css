@@ -1,0 +1,177 @@
+
+@page{
+    size:A4 portrait;
+    margin:0;
+}
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+body{
+    background:#ececec;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+.page{
+    width:210mm;
+    height:297mm;
+    background:#ffffff;
+    margin:10mm auto;
+    position:relative;
+    padding:12mm;
+    border:3px solid #7a1f2b;
+    overflow:hidden;
+}
+
+.page::before{
+    content:"";
+    position:absolute;
+    top:6mm;
+    left:6mm;
+    right:6mm;
+    bottom:6mm;
+    border:1.5px solid #7a1f2b;
+    pointer-events:none;
+}
+
+.header{
+    display:grid;
+    grid-template-columns:1fr 110px 1fr;
+    align-items:center;
+    gap:12px;
+    margin-bottom:8mm;
+}
+
+.left{
+    text-align:left;
+}
+
+.right{
+    text-align:right;
+}
+
+.left h2,
+.right h2{
+    color:#7a1f2b;
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:4px;
+}
+
+.left p,
+.right p{
+    color:#333;
+    font-size:12px;
+    line-height:1.4;
+}
+
+.center{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.logo{
+    width:90px;
+    height:90px;
+    border:2px solid #7a1f2b;
+    border-radius:50%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    color:#7a1f2b;
+    font-weight:bold;
+    font-size:14px;
+}
+
+.divider{
+    border-top:2px solid #7a1f2b;
+    border-radius:50%;
+    margin-bottom:8mm;
+}
+
+.rx{
+    font-size:34px;
+    color:#7a1f2b;
+    font-weight:bold;
+    margin-bottom:6mm;
+}
+
+.write-area{
+    height:180mm;
+    position:relative;
+    z-index:2;
+}
+
+.watermark{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    font-size:120px;
+    color:#7a1f2b;
+    opacity:.05;
+    font-weight:700;
+    user-select:none;
+    z-index:1;
+}
+
+.footer{
+    position:absolute;
+    left:12mm;
+    right:12mm;
+    bottom:12mm;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.box{
+    border:1.5px solid #7a1f2b;
+    border-radius:10px;
+    padding:8px 16px;
+    min-width:180px;
+    color:#7a1f2b;
+    background:#fff;
+}
+
+.box b{
+    display:block;
+    margin-bottom:4px;
+}
+
+@media screen and (max-width:900px){
+    body{
+        padding:20px;
+    }
+
+    .page{
+        width:100%;
+        height:auto;
+        aspect-ratio:210/297;
+        margin:auto;
+    }
+}
+
+@media print{
+
+    html,body{
+        width:210mm;
+        height:297mm;
+        background:#fff;
+    }
+
+    body{
+        margin:0;
+        padding:0;
+    }
+
+    .page{
+        margin:0;
+        box-shadow:none;
+        page-break-after:avoid;
+    }
+}

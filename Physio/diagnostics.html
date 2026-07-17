@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radiology &amp; Diagnostics | Lakshmi HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=5">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .diagnostic-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .diag-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .diag-preview {
+      width: 100%;
+      height: 160px;
+      background: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
+    }
+    .diag-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .diag-preview img:hover {
+      transform: scale(1.05);
+    }
+    .diag-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      border-radius: 4px;
+      background: var(--primary);
+      color: white;
+    }
+    .diag-info label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      display: block;
+      margin-top: 0.5rem;
+    }
+    .diag-info p {
+      margin: 0;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+<div class="cms-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i data-lucide="activity"></i>Revive<span>CMS</span></div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav"></nav>
+    <div class="sidebar-footer"></div>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn"><i data-lucide="menu"></i></button>
+      <h1 class="page-title">Diagnostic Reports</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="uploadReportBtn"><i data-lucide="upload-cloud"></i> Upload Report</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Top Stats -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 1.5rem;">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.12);color:#f59e0b;"><i data-lucide="clipboard"></i></div>
+        <div class="stat-info">
+          <h4>Total Reports</h4>
+          <h2 id="statTotalReports">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(20,184,166,0.12);color:var(--primary);"><i data-lucide="image"></i></div>
+        <div class="stat-info">
+          <h4>X-Ray Scans</h4>
+          <h2 id="statXrays">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;"><i data-lucide="scan"></i></div>
+        <div class="stat-info">
+          <h4>MRI / CT Scans</h4>
+          <h2 id="statMris">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><i data-lucide="file-text"></i></div>
+        <div class="stat-info">
+          <h4>Lab Reports</h4>
+          <h2 id="statLabs">0</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar" style="margin-bottom:1.5rem;">
+      <div class="search-input-wrap">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchDiag" placeholder="Search patient or scan findings...">
+      </div>
+      <select id="categoryFilter" style="padding:0.7rem 1rem; border:1.5px solid var(--border); border-radius:50px; background:var(--bg-main); font-size:0.9rem;">
+        <option value="">All Categories</option>
+        <option value="X-Ray">X-Ray</option>
+        <option value="MRI">MRI</option>
+        <option value="CT Scan">CT Scan</option>
+        <option value="Ultrasound">Ultrasound</option>
+        <option value="Blood Test">Blood Test</option>
+        <option value="Urine Test">Urine Test</option>
+        <option value="ECG">ECG</option>
+        <option value="ECHO">ECHO</option>
+        <option value="Lab Report">Lab Report</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <!-- Grid Container -->
+    <div class="diagnostic-grid" id="diagContainer">
+      <div class="spinner"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Upload / Add Report Modal -->
+<div class="modal-overlay" id="diagModal">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <h2 id="diagModalTitle">Upload Diagnostic Report</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="diagForm" novalidate>
+        <input type="hidden" id="diagId">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="form-group">
+            <label>Patient *</label>
+            <select id="diagPatientId" required>
+              <option value="">&mdash; Select Patient &mdash;</option>
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Category *</label>
+              <select id="diagCategory" required>
+                <option value="X-Ray">X-Ray</option>
+                <option value="MRI">MRI</option>
+                <option value="CT Scan">CT Scan</option>
+                <option value="Ultrasound">Ultrasound</option>
+                <option value="Blood Test">Blood Test</option>
+                <option value="Urine Test">Urine Test</option>
+                <option value="ECG">ECG</option>
+                <option value="ECHO">ECHO</option>
+                <option value="Lab Report">Lab Report</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Scan / Test Date *</label>
+              <input type="date" id="diagDate" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Referred / Diagnosing Physician</label>
+            <input type="text" id="diagDoctor" value="Dr. C. SANJAY" required>
+          </div>
+          <div class="form-group">
+            <label>Findings &amp; Diagnosis details *</label>
+            <textarea id="diagDetails" placeholder="Write radiologist / lab report conclusions..." required style="height:90px;"></textarea>
+          </div>
+          
+          <!-- File selection -->
+          <div class="form-group">
+            <label>Scan File (X-Ray/MRI Image or PDF)</label>
+            <input type="file" id="diagFileInput" accept="image/*,.pdf" style="padding:0.4rem 0;">
+            <div id="diagFilePreview" style="margin-top:0.5rem; display:none; max-height:300px; height:300px; border-radius:8px; border:1px solid var(--border); background:#111; overflow:hidden; position:relative;">
+              <img id="diagPreviewImg" src="" style="width:100%; height:100%; object-fit:contain; object-position:center; display:block; margin:0 auto;">
+              <div id="diagPdfPreview" style="display:none; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:0.75rem; color:#fff; padding:1rem;">
+                <i data-lucide="file-text" style="width:48px; height:48px; color:var(--primary);"></i>
+                <span id="diagPdfName" style="font-size:0.9rem; text-align:center; word-break:break-all; max-width:80%;"></span>
+                <button type="button" class="btn btn-primary btn-sm" id="diagOpenPdfBtn"><i data-lucide="external-link"></i> Open PDF</button>
+              </div>
+            </div>
+            <input type="hidden" id="diagDataUrl">
+            <input type="hidden" id="diagFileName">
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="saveDiagBtn"><i data-lucide="save"></i> Save Report</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/patientRepository.js"></script>
+<script src="js/repositories/diagnosticRepository.js"></script>
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script>
+let allReports = [];
+let allPatients = [];
+let editingDiagId = null;
+
+document.addEventListener('cms:ready', async () => {
+  try {
+    await loadData();
+    setupEventListeners();
+    renderReports();
+  } catch (err) {
+    console.error('Error during diagnostics initialization:', err);
+    const container = document.getElementById('diagContainer');
+    if (container) {
+      container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem;" class="card"><p style="color:var(--text-muted);">Failed to load diagnostic reports. Please try refreshing.</p></div>';
+    }
+  }
+});
+
+async function loadData() {
+  try {
+    allReports = await CMS.diagnosticReports.getAll();
+  } catch (err) {
+    console.error('Failed to load diagnostic reports:', err);
+    allReports = [];
+  }
+  try {
+    allPatients = await CMS.patients.getAll();
+  } catch (err) {
+    console.error('Failed to load patients:', err);
+    allPatients = [];
+  }
+  
+  const select = document.getElementById('diagPatientId');
+  if (select) {
+    select.innerHTML = '<option value="">&mdash; Select Patient &mdash;</option>' + 
+      allPatients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  }
+    
+  updateStatistics();
+}
+
+function updateStatistics() {
+  document.getElementById('statTotalReports').textContent = allReports.length;
+  
+  const xrays = allReports.filter(r => r.category === 'X-Ray').length;
+  document.getElementById('statXrays').textContent = xrays;
+  
+  const mris = allReports.filter(r => r.category === 'MRI' || r.category === 'CT Scan').length;
+  document.getElementById('statMris').textContent = mris;
+  
+  const labs = allReports.filter(r => r.category === 'Blood Test' || r.category === 'Urine Test' || r.category === 'Lab Report').length;
+  document.getElementById('statLabs').textContent = labs;
+}
+
+function setupEventListeners() {
+  document.getElementById('uploadReportBtn').addEventListener('click', () => {
+    editingDiagId = null;
+    document.getElementById('diagModalTitle').textContent = 'Upload Diagnostic Report';
+    document.getElementById('diagForm').reset();
+    document.getElementById('diagDate').value = todayISO();
+    document.getElementById('diagDoctor').value = 'Dr. C. SANJAY';
+    document.getElementById('diagDataUrl').value = '';
+    document.getElementById('diagFileName').value = '';
+    showPreview('', '');
+    openModal('diagModal');
+  });
+  
+  document.getElementById('saveDiagBtn').addEventListener('click', saveReport);
+  
+  document.getElementById('searchDiag').addEventListener('input', renderReports);
+  document.getElementById('categoryFilter').addEventListener('change', renderReports);
+  
+  // File change reader
+  document.getElementById('diagFileInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      document.getElementById('diagDataUrl').value = ev.target.result;
+      document.getElementById('diagFileName').value = file.name;
+      showPreview(ev.target.result, file.name);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderReports() {
+  const container = document.getElementById('diagContainer');
+  const q = document.getElementById('searchDiag').value.toLowerCase();
+  const cat = document.getElementById('categoryFilter').value;
+  
+  const filtered = allReports.filter(r => {
+    const pName = r.patientName ? r.patientName.toLowerCase() : "";
+    const details = r.details ? r.details.toLowerCase() : "";
+    const category = r.category ? r.category.toLowerCase() : "";
+    const docName = r.doctorName ? r.doctorName.toLowerCase() : "";
+    
+    const matchesSearch = !q || pName.includes(q) || details.includes(q) || category.includes(q) || docName.includes(q) || (r.patientId || '').toString().toLowerCase().includes(q);
+    const matchesCategory = !cat || r.category === cat;
+    return matchesSearch && matchesCategory;
+  });
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:3rem;" class="card"><p style="color:var(--text-muted);">No diagnostic records found</p></div>`;
+    return;
+  }
+  
+  container.innerHTML = filtered.slice().reverse().map(r => {
+    const preview = r.dataUrl 
+      ? `<div class="diag-preview">
+          <span class="diag-badge">${r.category}</span>
+          <img src="${r.dataUrl}" alt="${r.fileName || 'Report'}" onclick="window.open('${r.dataUrl}','_blank')">
+         </div>`
+      : `<div class="diag-preview" style="background:var(--bg-main);">
+          <span class="diag-badge">${r.category}</span>
+          <i data-lucide="file" style="width:40px;height:40px;color:var(--text-muted)"></i>
+         </div>`;
+         
+    return `
+      <div class="card diag-card fade-in">
+        <div>
+          ${preview}
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+            <h4 style="margin:0; font-size:0.95rem; font-weight:700; color:var(--text-main); cursor:pointer;" onclick="navigateToPatientProfile('${r.patientId}')">${r.patientName}</h4>
+            <span style="font-size:0.75rem; color:var(--text-muted);">${formatDate(r.date)}</span>
+          </div>
+          
+          <div class="diag-info">
+            <label>Report Findings &amp; Clinical Details</label>
+            <p style="font-weight:600; line-height:1.4;">${r.details}</p>
+            
+            <label>Referring Doctor</label>
+            <p style="font-size:0.8rem; color:var(--text-muted);">${r.doctorName || 'Dr. C. Sanjay'}</p>
+          </div>
+        </div>
+        
+        <div style="display:flex; gap:0.5rem; border-top:1px solid var(--border); padding-top:0.75rem; margin-top:1rem;">
+          <button class="btn btn-outline btn-sm" style="flex:1;" onclick="editReport('${r.id}')"><i data-lucide="edit-2"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="deleteReport('${r.id}')" style="color:var(--danger);"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  lucide.createIcons();
+}
+
+async function saveReport() {
+  const patientId = document.getElementById('diagPatientId').value;
+  const category = document.getElementById('diagCategory').value;
+  const date = document.getElementById('diagDate').value;
+  const doctorName = document.getElementById('diagDoctor').value.trim();
+  const details = document.getElementById('diagDetails').value.trim();
+  const dataUrl = document.getElementById('diagDataUrl').value;
+  const fileName = document.getElementById('diagFileName').value;
+  
+  if (!patientId || !details || !date) {
+    showToast('Please fill in patient, findings details, and test date.', 'error');
+    return;
+  }
+  
+  const patient = allPatients.find(p => p.id === patientId);
+  if (!patient) return;
+  
+  const id = document.getElementById('diagId').value;
+  const reportData = {
+    patientId: patientId,
+    patientName: patient.name,
+    category,
+    scanDate: date,
+    physician: doctorName,
+    findings: details,
+    fileUrl: dataUrl,
+    fileName: fileName || (category + '_report'),
+    reportStatus: 'Completed'
+  };
+  
+  try {
+    if (id) {
+      await CMS.diagnosticReports.update({ ...reportData, id: id });
+      showToast('Diagnostic report updated!', 'success');
+    } else {
+      const reportId = await CMS.diagnosticReports.add(reportData);
+      showToast('Diagnostic report uploaded successfully!', 'success');
+      
+      // Auto-attach as patient file in IndexedDB EMR table for backwards compatibility
+      if (dataUrl) {
+        await CMS.files.add(patientId, {
+          name: fileName || (category + '_scan.png'),
+          type: 'image/png',
+          dataUrl
+        });
+      }
+      
+      // Log visit/consult event
+      await CMS.visits.add({
+        patientId: patientId,
+        date,
+        notes: `Diagnostic Upload: Uploaded ${category} report. Findings: ${details}`
+      });
+    }
+    
+    closeModal('diagModal');
+    await loadData();
+    renderReports();
+  } catch (err) {
+    showToast('Error saving diagnostic report: ' + err.message, 'error');
+  }
+}
+
+async function editReport(id) {
+  const r = await CMS.diagnosticReports.getById(id);
+  
+  document.getElementById('diagModalTitle').textContent = 'Edit Diagnostic Report';
+  document.getElementById('diagId').value = r.id;
+  document.getElementById('diagPatientId').value = r.patientId;
+  document.getElementById('diagCategory').value = r.category;
+  document.getElementById('diagDate').value = r.date;
+  document.getElementById('diagDoctor').value = r.doctorName || 'Dr. C. SANJAY';
+  document.getElementById('diagDetails').value = r.details;
+  
+  document.getElementById('diagDataUrl').value = r.dataUrl || '';
+  document.getElementById('diagFileName').value = r.fileName || '';
+  showPreview(r.dataUrl, r.fileName);
+  
+  openModal('diagModal');
+}
+
+async function deleteReport(id) {
+  if (!confirm('Are you sure you want to delete this report?')) return;
+  await CMS.diagnosticReports.delete(id);
+  showToast('Report deleted.', 'warning');
+  await loadData();
+  renderReports();
+}
+
+function showPreview(dataUrl, fileName) {
+  const container = document.getElementById('diagFilePreview');
+  const img = document.getElementById('diagPreviewImg');
+  const pdfBlock = document.getElementById('diagPdfPreview');
+  const pdfName = document.getElementById('diagPdfName');
+  
+  if (!dataUrl) {
+    container.style.display = 'none';
+    img.style.display = 'none';
+    pdfBlock.style.display = 'none';
+    return;
+  }
+  
+  container.style.display = 'block';
+  const isPdf = dataUrl.startsWith('data:application/pdf') || (fileName && fileName.toLowerCase().endsWith('.pdf'));
+  
+  if (isPdf) {
+    img.style.display = 'none';
+    pdfBlock.style.display = 'flex';
+    pdfName.textContent = fileName || 'Report PDF';
+    
+    const openBtn = document.getElementById('diagOpenPdfBtn');
+    if (openBtn) {
+      const newOpenBtn = openBtn.cloneNode(true);
+      openBtn.parentNode.replaceChild(newOpenBtn, openBtn);
+      newOpenBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.open(dataUrl, '_blank');
+      });
+    }
+  } else {
+    pdfBlock.style.display = 'none';
+    img.style.display = 'block';
+    img.src = dataUrl;
+  }
+  
+  lucide.createIcons();
+}
+
+function navigateToPatientProfile(patientId) {
+  sessionStorage.setItem('openPatientProfileId', patientId);
+  window.location.href = 'patients.html';
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+</script>
+</body>
+</html>

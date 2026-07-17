@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicines | Lakshmi HIS &mdash; Orthopaedic &amp; Pain HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=9">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<div class="cms-layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i data-lucide="activity"></i>Revive<span>CMS</span></div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav">
+      <a href="index.html"         class="nav-item"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+      <a href="patients.html"      class="nav-item"><i data-lucide="users"></i> Patients</a>
+      <a href="medicines.html"     class="nav-item active"><i data-lucide="pill"></i> Medicines<span class="nav-badge low-stock-badge" style="display:none">0</span></a>
+      <a href="prescriptions.html" class="nav-item"><i data-lucide="file-text"></i> Prescriptions</a>
+      <a href="reports.html"       class="nav-item"><i data-lucide="bar-chart-2"></i> Reports</a>
+      <a href="profit.html"        class="nav-item"><i data-lucide="trending-up"></i> Profit Analysis</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-doctor">
+        <div class="doctor-avatar">K</div>
+        <div><h4>Dr. R. Karthik</h4><p>MPT (Orthopaedics)</p></div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn"><i data-lucide="menu"></i></button>
+      <h1 class="page-title">Medicines</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="addMedBtn"><i data-lucide="plus"></i> Add Medicine</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <!-- Top Stats Row -->
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:1.5rem;">
+      <div class="stat-card">
+        <div class="stat-icon blue"><i data-lucide="pill"></i></div>
+        <div class="stat-info"><h4>Total Items</h4><h2 id="totalMeds">&mdash;</h2></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="check-circle"></i></div>
+        <div class="stat-info"><h4>In Stock</h4><h2 id="inStockMeds">&mdash;</h2></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon orange"><i data-lucide="alert-circle"></i></div>
+        <div class="stat-info"><h4>Low Stock</h4><h2 id="lowStockMeds">&mdash;</h2></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i data-lucide="x-circle"></i></div>
+        <div class="stat-info"><h4>Out of Stock</h4><h2 id="outStockMeds">&mdash;</h2></div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <div class="search-input-wrap">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchMed" placeholder="Search medicines...">
+      </div>
+      <select id="stockFilter" style="padding:0.7rem 1rem;border:1.5px solid var(--border);border-radius:50px;background:var(--bg-main);font-size:0.9rem;">
+        <option value="">All</option>
+        <option value="ok">In Stock</option>
+        <option value="low">Low Stock</option>
+        <option value="out">Out of Stock</option>
+      </select>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <h3>Medicine Inventory</h3>
+        <span id="medCount" class="badge badge-primary">0 items</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Medicine Name</th>
+              <th>Unit</th>
+              <th>Available / Total</th>
+              <th>Stock Level</th>
+              <th style="text-align:right;">Buying Price (&#8377;)</th>
+              <th style="text-align:right;">Selling Price (&#8377;)</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="medTableBody">
+            <tr><td colspan="7"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Medicine Modal -->
+<div class="modal-overlay" id="medModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h2 id="medModalTitle">Add Medicine</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="medForm">
+        <input type="hidden" id="medId">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>Medicine Name *</label>
+            <input type="text" id="mName" placeholder="e.g. Ibuprofen 400mg" required>
+          </div>
+          <div class="form-group">
+            <label>Unit</label>
+            <select id="mUnit">
+              <option value="Tablet">Tablet</option>
+              <option value="Capsule">Capsule</option>
+              <option value="Tube">Tube</option>
+              <option value="Bottle">Bottle</option>
+              <option value="Sachet">Sachet</option>
+              <option value="vial">Vial</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Buying Price (&#8377;) *</label>
+            <input type="number" id="mBuyingPrice" placeholder="e.g. 3.00" min="0" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Selling Price (&#8377;) *</label>
+            <input type="number" id="mSellingPrice" placeholder="e.g. 5.00" min="0" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label>Total Quantity *</label>
+            <input type="number" id="mTotalQty" placeholder="e.g. 100" min="0" required>
+          </div>
+          <div class="form-group">
+            <label>Available Quantity *</label>
+            <input type="number" id="mAvailableQty" placeholder="e.g. 80" min="0" required>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="saveMedBtn"><i data-lucide="save"></i> Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Update Stock Modal -->
+<div class="modal-overlay" id="stockModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>Update Stock</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="stockMedId">
+      <p id="stockMedName" style="font-weight:600;margin-bottom:1rem;"></p>
+      <div class="form-group">
+        <label>Add / Remove Quantity</label>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="btn btn-outline" onclick="changeStockDelta(-1)">&minus;</button>
+          <input type="number" id="stockDelta" value="0" style="text-align:center;flex:1;">
+          <button class="btn btn-outline" onclick="changeStockDelta(1)">+</button>
+        </div>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;">Positive = restock. Negative = remove.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="saveStockBtn"><i data-lucide="check"></i> Update</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/medicineRepository.js"></script>
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script>
+let allMedicines = [];
+let editingMedId = null;
+
+function changeStockDelta(v) {
+  const el = document.getElementById('stockDelta');
+  el.value = parseInt(el.value || 0) + v;
+}
+
+async function loadMedicines() {
+  try {
+    allMedicines = await CMS.medicines.getAll();
+  } catch (err) {
+    console.error('Failed to load medicines:', err);
+    showToast('Failed to load medicines: ' + err.message, 'error');
+    allMedicines = [];
+  }
+  renderMedTable(allMedicines);
+  updateStats(allMedicines);
+}
+
+function updateStats(meds) {
+  document.getElementById('totalMeds').textContent    = meds.length;
+  document.getElementById('inStockMeds').textContent  = meds.filter(m => m.stockStatus === 'In Stock').length;
+  document.getElementById('lowStockMeds').textContent = meds.filter(m => m.stockStatus === 'Low Stock').length;
+  document.getElementById('outStockMeds').textContent = meds.filter(m => m.stockStatus === 'Out of Stock').length;
+}
+
+function getStockStatus(m) {
+  const status = m.stockStatus || 'In Stock';
+  if (status === 'Out of Stock') return { label: 'Out of Stock', cls: 'badge-danger', filter: 'out' };
+  if (status === 'Low Stock')    return { label: 'Low Stock',    cls: 'badge-warning', filter: 'low' };
+  return { label: 'In Stock', cls: 'badge-success', filter: 'ok' };
+}
+
+function renderMedTable(meds) {
+  document.getElementById('medCount').textContent = `${meds.length} items`;
+  const tbody = document.getElementById('medTableBody');
+  if (!meds.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><i data-lucide="pill"></i><h3>No medicines found</h3></div></td></tr>`;
+    lucide.createIcons(); return;
+  }
+  tbody.innerHTML = meds.map(m => {
+    const st = getStockStatus(m);
+    return `
+    <tr>
+      <td class="td-name">${m.name}</td>
+      <td class="td-light">${m.unit || '&mdash;'}</td>
+      <td>
+        <strong>${m.availableQty}</strong> <span class="td-light">/ ${m.totalQty}</span>
+        ${buildStockBar(m.availableQty, m.totalQty)}
+      </td>
+      <td>
+        <div style="font-size:0.75rem;color:var(--text-muted);">${Math.round((m.availableQty / (m.totalQty || 1)) * 100)}%</div>
+      </td>
+      <td class="td-light" style="text-align:right;">${formatCurrency(m.buyingPrice !== undefined ? m.buyingPrice : m.price || 0)}</td>
+      <td class="td-light" style="text-align:right;">
+        ${formatCurrency(m.sellingPrice !== undefined ? m.sellingPrice : m.price || 0)}
+        ${(parseFloat(m.sellingPrice ?? m.price ?? 0) <= parseFloat(m.buyingPrice ?? m.price ?? 0))
+          ? '<span title="Selling price must be higher than buying price to generate profit" style="margin-left:5px;font-size:0.7rem;padding:1px 6px;border-radius:50px;background:rgba(239,68,68,0.15);color:#ef4444;font-weight:600;cursor:help;">No Profit âš </span>'
+          : ''}
+      </td>
+      <td><span class="badge ${st.cls}">${st.label}</span></td>
+      <td>
+        <div style="display:flex;gap:0.4rem;">
+          <button class="btn btn-ghost btn-sm btn-icon" title="Quick Update Stock" onclick="quickUpdateStock('${m.id}')"><i data-lucide="refresh-cw"></i></button>
+          <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="editMedicine('${m.id}')"><i data-lucide="edit-2"></i></button>
+          <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="deleteMedicine('${m.id}')" style="color:var(--danger)"><i data-lucide="trash-2"></i></button>
+        </div>
+      </td>
+    </tr>
+  `}).join('');
+  lucide.createIcons();
+}
+
+document.getElementById('searchMed').addEventListener('input', filterMedicines);
+document.getElementById('stockFilter').addEventListener('change', filterMedicines);
+
+function filterMedicines() {
+  const q = document.getElementById('searchMed').value.toLowerCase();
+  const sf = document.getElementById('stockFilter').value;
+  const filtered = allMedicines.filter(m => {
+    const st = getStockStatus(m);
+    const mName = m.name ? m.name.toLowerCase() : "";
+    const mUnit = m.unit ? m.unit.toLowerCase() : "";
+    const mStatus = st.label ? st.label.toLowerCase() : "";
+    const matchesSearch = !q || mName.includes(q) || mUnit.includes(q) || mStatus.includes(q);
+    const matchesFilter = !sf || st.filter === sf;
+    return matchesSearch && matchesFilter;
+  });
+  renderMedTable(filtered);
+}
+
+// Add Medicine
+document.getElementById('addMedBtn').addEventListener('click', () => {
+  editingMedId = null;
+  document.getElementById('medModalTitle').textContent = 'Add Medicine';
+  document.getElementById('medForm').reset();
+  openModal('medModal'); lucide.createIcons();
+});
+
+document.getElementById('saveMedBtn').addEventListener('click', async () => {
+  const name = document.getElementById('mName').value.trim();
+  const totalQty = parseInt(document.getElementById('mTotalQty').value);
+  const availableQty = parseInt(document.getElementById('mAvailableQty').value);
+  const buyingPrice = parseFloat(document.getElementById('mBuyingPrice').value);
+  const sellingPrice = parseFloat(document.getElementById('mSellingPrice').value);
+
+  if (!name || isNaN(totalQty) || isNaN(availableQty) || isNaN(buyingPrice) || isNaN(sellingPrice)) { showToast('Please fill all required fields.', 'error'); return; }
+  if (buyingPrice < 0 || sellingPrice < 0) { showToast('Prices cannot be negative.', 'error'); return; }
+  if (totalQty < 0 || availableQty < 0) { showToast('Quantities cannot be negative.', 'error'); return; }
+  if (availableQty > totalQty) { showToast('Available quantity cannot exceed total quantity.', 'error'); return; }
+  if (buyingPrice > sellingPrice) { showToast('Buying price cannot be greater than selling price.', 'error'); return; }
+
+  const data = { name, unit: document.getElementById('mUnit').value, totalQty, availableQty, buyingPrice, sellingPrice, price: sellingPrice };
+  try {
+    if (editingMedId) {
+      // Check if prices changed before saving â€” if so, recalc profit transactions
+      const existing = await CMS.medicines.getById(editingMedId);
+      const oldBP = parseFloat(existing.buyingPrice !== undefined ? existing.buyingPrice : existing.price || 0);
+      const oldSP = parseFloat(existing.sellingPrice !== undefined ? existing.sellingPrice : existing.price || 0);
+      const pricesChanged = oldBP !== buyingPrice || oldSP !== sellingPrice;
+
+      await CMS.medicines.update({ ...data, id: editingMedId });
+
+      if (pricesChanged) {
+        await CMS.profitTransactions.recalcProfitForMedicine(editingMedId, buyingPrice, sellingPrice);
+        showToast('Medicine updated & profit analysis recalculated!', 'success');
+      } else {
+        showToast('Medicine updated!', 'success');
+      }
+    } else {
+      await CMS.medicines.add(data);
+      showToast('Medicine added!', 'success');
+    }
+    closeModal('medModal'); await loadMedicines();
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+});
+
+async function editMedicine(id) {
+  const m = await CMS.medicines.getById(id);
+  editingMedId = id;
+  document.getElementById('medModalTitle').textContent = 'Edit Medicine';
+  document.getElementById('mName').value = m.name;
+  document.getElementById('mUnit').value = m.unit || 'Tablet';
+  document.getElementById('mTotalQty').value = m.totalQty;
+  document.getElementById('mAvailableQty').value = m.availableQty;
+  document.getElementById('mBuyingPrice').value = m.buyingPrice !== undefined ? m.buyingPrice : m.price || 0;
+  document.getElementById('mSellingPrice').value = m.sellingPrice !== undefined ? m.sellingPrice : m.price || 0;
+  openModal('medModal'); lucide.createIcons();
+}
+
+async function deleteMedicine(id) {
+  if (!confirmAction('Delete this medicine? This cannot be undone.')) return;
+  await CMS.medicines.delete(id);
+  showToast('Medicine deleted.', 'warning');
+  await loadMedicines();
+}
+
+let quickStockMedicine = null;
+async function quickUpdateStock(id) {
+  quickStockMedicine = await CMS.medicines.getById(id);
+  document.getElementById('stockMedId').value = id;
+  document.getElementById('stockMedName').textContent = `${quickStockMedicine.name} &mdash; Current: ${quickStockMedicine.availableQty} ${quickStockMedicine.unit || ''}`;
+  document.getElementById('stockDelta').value = 0;
+  openModal('stockModal'); lucide.createIcons();
+}
+
+document.getElementById('saveStockBtn').addEventListener('click', async () => {
+  const delta = parseInt(document.getElementById('stockDelta').value || 0);
+  if (!quickStockMedicine) return;
+  const newQty = quickStockMedicine.availableQty + delta;
+  if (newQty < 0) { showToast('Stock cannot go below zero!', 'error'); return; }
+  const newTotal = Math.max(quickStockMedicine.totalQty, newQty);
+  await CMS.medicines.update({ ...quickStockMedicine, availableQty: newQty, totalQty: newTotal });
+  showToast(`Stock updated to ${newQty} units.`, 'success');
+  closeModal('stockModal');
+  await loadMedicines();
+});
+
+document.addEventListener('cms:ready', async () => {
+  try {
+    await loadMedicines();
+  } catch (err) {
+    console.error('Error during medicines initialization:', err);
+  }
+});
+</script>
+</body>
+</html>

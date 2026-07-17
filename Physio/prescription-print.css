@@ -1,0 +1,51 @@
+@page{size:A4;margin:0}
+*{box-sizing:border-box}
+body{margin:0;background:#eee;font-family:Arial,sans-serif}
+.page{
+width:210mm;height:297mm;margin:auto;background:#fff;
+padding:15mm;border:2px solid #8b1e2d;position:relative;
+}
+.header{
+height:45mm;border-top:4px double #8b1e2d;border-bottom:4px double #8b1e2d;
+display:grid;grid-template-columns:1fr 120px 1fr;align-items:start;padding:6mm 0;
+}
+.left h1,.right h2{color:#8b1e2d;margin:0;font-size:20px}
+.left p,.right p{margin:3px 0}
+.center{display:flex;justify-content:center;align-items:center}
+.logo,
+.logo svg,
+.logo img{
+    display:block;
+    width:76px;
+    height:76px;
+    margin:auto;
+}
+.patient-info{margin-top:6mm;display:grid;grid-template-columns:1fr 1fr;gap:4mm;font-size:13px}
+.rx{font-size:64px;color:#8b1e2d;margin-top:6mm;font-family:serif}
+.medicine-table{width:100%;border-collapse:collapse;margin-top:4mm}
+.medicine-table th{border-top:2px solid #8b1e2d;border-bottom:2px solid #8b1e2d;color:#8b1e2d;text-align:left;padding:6px;font-size:12px}
+.medicine-table td{padding:8px;border-bottom:1px solid #ddd;font-size:12px}
+.watermark{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    pointer-events:none;
+    z-index:0;
+}
+.watermark svg,
+.watermark img{
+    width:65%;
+    height:auto;
+    opacity:0.05;
+    object-fit:contain;
+}
+.footer{
+position:absolute;left:15mm;right:15mm;bottom:15mm;
+display:flex;justify-content:space-between;
+border-top:4px double #8b1e2d;padding-top:4mm;font-weight:bold;color:#8b1e2d
+}
+@media print{
+body{background:#fff}
+}

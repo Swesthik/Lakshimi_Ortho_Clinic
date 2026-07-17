@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rehabilitation Programs | Lakshmi HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=5">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    .progress-bar-container {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      height: 10px;
+      width: 100%;
+      overflow: hidden;
+      margin: 0.5rem 0;
+      border: 1px solid var(--border);
+    }
+    .progress-bar-fill {
+      background: linear-gradient(90deg, var(--accent) 0%, var(--primary) 100%);
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+    .goals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .goal-tag {
+      background: rgba(20, 184, 166, 0.08);
+      border: 1px solid rgba(20, 184, 166, 0.2);
+      color: var(--primary);
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-weight: 500;
+    }
+    .session-log-card {
+      background: rgba(0, 0, 0, 0.15);
+      border-left: 3px solid var(--accent);
+      padding: 0.6rem 0.8rem;
+      border-radius: 4px;
+      margin-bottom: 0.5rem;
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .session-log-date {
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .session-log-note {
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="cms-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i data-lucide="activity"></i>Revive<span>CMS</span></div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav"></nav>
+    <div class="sidebar-footer"></div>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn"><i data-lucide="menu"></i></button>
+      <h1 class="page-title">Rehab &amp; Physiotherapy</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="createPlanBtn"><i data-lucide="plus"></i> New Rehab Program</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Top Stats -->
+    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 1.5rem;">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(20,184,166,0.12);color:var(--primary);"><i data-lucide="heart-pulse"></i></div>
+        <div class="stat-info">
+          <h4>Active Programs</h4>
+          <h2 id="statActivePlans">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(168,85,247,0.12);color:#a855f7;"><i data-lucide="activity"></i></div>
+        <div class="stat-info">
+          <h4>Total Sessions Logged</h4>
+          <h2 id="statSessionsLogged">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i data-lucide="award"></i></div>
+        <div class="stat-info">
+          <h4>Completed Programs</h4>
+          <h2 id="statCompletedPlans">0</h2>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon blue"><i data-lucide="smile"></i></div>
+        <div class="stat-info">
+          <h4>Avg Rehab Completion</h4>
+          <h2 id="statAvgProgress">0%</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layout Dividers -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+      <h3 style="margin:0; font-family:var(--font-heading);">Rehabilitation Schedules</h3>
+      <div style="display:flex; gap:0.5rem;">
+        <select id="planStatusFilter" style="padding:0.5rem 1rem; border:1.5px solid var(--border); border-radius:50px; background:var(--bg-main); font-size:0.85rem; font-weight:600;">
+          <option value="Active">Active Plans</option>
+          <option value="Completed">Completed Plans</option>
+          <option value="All">All Plans</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Active Plans Grid -->
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem;" id="rehabPlansContainer">
+      <div class="spinner"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- 1. Create / Edit Rehab Plan Modal -->
+<div class="modal-overlay" id="planModal">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-header">
+      <h2 id="planModalTitle">Create Rehab Program</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="planForm" novalidate>
+        <input type="hidden" id="planId">
+        <div class="form-grid" style="grid-template-columns: 1fr;">
+          <div class="form-group">
+            <label>Patient *</label>
+            <select id="planPatientId" required>
+              <option value="">&mdash; Select Patient &mdash;</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Program / Plan Name *</label>
+            <input type="text" id="planName" placeholder="e.g. Post-TKR Rehabilitation, Lumbar Disc Rehab" required>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Total Scheduled Sessions *</label>
+              <input type="number" id="planSessionsTotal" value="10" min="1" required>
+            </div>
+            <div class="form-group">
+              <label>Assigned Therapist *</label>
+              <input type="text" id="planTherapist" value="Dr. C. Sanjay" required>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+              <label>Session Duration</label>
+              <select id="planDuration">
+                <option value="30 Mins">30 Mins</option>
+                <option value="45 Mins" selected>45 Mins</option>
+                <option value="60 Mins">60 Mins</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Program Status</label>
+              <select id="planStatus">
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>Recovery &amp; Rehab Goals</label>
+            <textarea id="planGoals" placeholder="Describe clinical goals (e.g. Increase ROM to 110 deg, decrease pain, improve gait/limp)..." style="height:80px;"></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="savePlanBtn"><i data-lucide="save"></i> Save Program</button>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Log Session Modal -->
+<div class="modal-overlay" id="sessionModal" style="z-index:600;">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h2>Log Treatment Session</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="sessionForm" novalidate>
+        <input type="hidden" id="sessionPlanId">
+        <div class="form-group">
+          <label>Date *</label>
+          <input type="date" id="sessionDate" required>
+        </div>
+        <div class="form-group">
+          <label>Session Treatment &amp; Progress Notes *</label>
+          <textarea id="sessionNotes" placeholder="Describe exercises performed, patient tolerance, improvements, pain level..." required style="height:120px;"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="saveSessionBtn"><i data-lucide="check"></i> Complete Session</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/patientRepository.js"></script>
+<script src="js/repositories/rehabRepository.js"></script>
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script>
+let allPlans = [];
+let allPatients = [];
+let allSessions = [];
+
+document.addEventListener('cms:ready', async () => {
+  const container = document.getElementById('rehabPlansContainer');
+  try {
+    await loadData();
+    setupEventListeners();
+    await renderPlans();
+  } catch (err) {
+    console.error('Error loading rehab dashboard:', err);
+    if (container) {
+      container.innerHTML = `
+        <div style="grid-column:1/-1; text-align:center; padding:3rem;" class="card">
+          <i data-lucide="alert-triangle" style="width:48px; height:48px; color:var(--danger); margin:0 auto 1rem;"></i>
+          <h3 style="color:var(--danger);">Error Loading Rehab Programs</h3>
+          <p style="color:var(--text-muted); margin-top:0.5rem;">${err.message || 'An unexpected error occurred.'}</p>
+        </div>
+      `;
+      lucide.createIcons();
+    }
+  }
+});
+
+async function loadData() {
+  allPlans = await CMS.treatmentPlans.getAll();
+  allPatients = await CMS.patients.getAll();
+  allSessions = await CMS.treatmentSessions.getAll();
+  
+  // Populate patient dropdown
+  const select = document.getElementById('planPatientId');
+  select.innerHTML = '<option value="">&mdash; Select Patient &mdash;</option>' + 
+    allPatients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  
+  updateStatistics();
+}
+
+function updateStatistics() {
+  const active = allPlans.filter(p => p.status === 'Active');
+  document.getElementById('statActivePlans').textContent = active.length;
+  
+  document.getElementById('statSessionsLogged').textContent = allSessions.length;
+  
+  const completed = allPlans.filter(p => p.status === 'Completed');
+  document.getElementById('statCompletedPlans').textContent = completed.length;
+  
+  // Calculate average progress percentage
+  if (allPlans.length === 0) {
+    document.getElementById('statAvgProgress').textContent = '0%';
+  } else {
+    let totalProgress = 0;
+    allPlans.forEach(p => {
+      totalProgress += (parseInt(p.sessionsCompleted || 0) / parseInt(p.sessionsTotal || 1));
+    });
+    const avg = Math.round((totalProgress / allPlans.length) * 100);
+    document.getElementById('statAvgProgress').textContent = `${avg}%`;
+  }
+}
+
+function setupEventListeners() {
+  document.getElementById('createPlanBtn').addEventListener('click', () => {
+    editingPlanId = null;
+    document.getElementById('planModalTitle').textContent = 'Create Rehab Program';
+    document.getElementById('planForm').reset();
+    document.getElementById('planId').value = '';
+    document.getElementById('planStatus').value = 'Active';
+    openModal('planModal');
+  });
+
+  document.getElementById('savePlanBtn').addEventListener('click', savePlan);
+  document.getElementById('saveSessionBtn').addEventListener('click', saveSession);
+  
+  document.getElementById('planStatusFilter').addEventListener('change', renderPlans);
+}
+
+async function renderPlans() {
+  const container = document.getElementById('rehabPlansContainer');
+  const filter = document.getElementById('planStatusFilter').value;
+  
+  let filtered = allPlans;
+  if (filter !== 'All') {
+    filtered = allPlans.filter(p => p.status === filter);
+  }
+  
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column:1/-1; text-align:center; padding:3rem;" class="card">
+        <div class="empty-state">
+          <i data-lucide="activity" style="width:48px; height:48px; color:var(--text-muted); margin:0 auto 1rem;"></i>
+          <h3>No Rehab Programs Found</h3>
+          <p style="color:var(--text-muted); margin-top:0.5rem;">Create a rehabilitation program to track recovery progress.</p>
+        </div>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+  
+  // Fetch session logs details for plans
+  const enrichedPlans = await Promise.all(filtered.map(async plan => {
+    const sessions = allSessions.filter(s => s.treatmentPlanId === plan.id);
+    return { ...plan, sessionLogs: sessions };
+  }));
+  
+  container.innerHTML = enrichedPlans.slice().reverse().map(p => {
+    const comp = parseInt(p.sessionsCompleted || 0);
+    const tot = parseInt(p.sessionsTotal || 1);
+    const pct = Math.min(100, Math.round((comp / tot) * 100));
+    
+    let badgeClass = 'badge-primary';
+    if (p.status === 'Completed') badgeClass = 'badge-success';
+    else if (p.status === 'Suspended') badgeClass = 'badge-neutral';
+    
+    // Format session log rows
+    const logHTML = p.sessionLogs.length > 0 
+      ? `<div style="margin-top:1rem; border-top:1px solid var(--border); padding-top:0.75rem;">
+          <h5 style="margin:0 0 0.5rem 0; font-size:0.82rem; text-transform:uppercase; color:var(--text-muted);">Session History</h5>
+          <div style="max-height:150px; overflow-y:auto;">
+            ${p.sessionLogs.map(l => `
+              <div class="session-log-card">
+                <div>
+                  <span class="session-log-date">${formatDate(l.date)}</span>
+                  <div class="session-log-note">${l.notes}</div>
+                </div>
+                <button class="btn btn-ghost btn-xs" onclick="deleteSession('${l.id}')" style="color:var(--danger); padding:2px;"><i data-lucide="x" style="width:12px;height:12px;"></i></button>
+              </div>
+            `).join('')}
+          </div>
+         </div>`
+      : `<p style="font-size:0.8rem; color:var(--text-muted); font-style:italic; margin-top:0.75rem;">No sessions logged yet.</p>`;
+
+    return `
+      <div class="card fade-in" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+            <div>
+              <h3 style="margin:0; font-size:1.1rem; color:var(--primary);">${p.name}</h3>
+              <span style="font-size:0.85rem; font-weight:700; color:var(--text-main); cursor:pointer;" onclick="navigateToPatientProfile('${p.patientId}')">${p.patientName}</span>
+            </div>
+            <span class="badge ${badgeClass}">${p.status}</span>
+          </div>
+          
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-top:0.75rem;">
+            <span>Therapist: <strong>${p.assignedTherapist}</strong></span>
+            <span>Duration: <strong>${p.sessionDuration || p.sessionDuration || '45 Mins'}</strong></span>
+          </div>
+          
+          <div style="margin-top:0.75rem;">
+            <div style="display:flex; justify-content:space-between; font-size:0.82rem; font-weight:600;">
+              <span>Recovery Progress</span>
+              <span>${comp} / ${tot} Sessions (${pct}%)</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill" style="width:${pct}%;"></div>
+            </div>
+          </div>
+          
+          <div class="goals-grid">
+            <div class="goal-tag" title="Recovery Goals"><i data-lucide="target" style="width:12px;height:12px;"></i> Goals: ${p.goals || 'Rehab goals'}</div>
+          </div>
+          
+          ${logHTML}
+        </div>
+        
+        <div style="display:flex; gap:0.5rem; border-top:1px solid var(--border); padding-top:1rem; margin-top:1.25rem;">
+          ${p.status === 'Active' ? `
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="openLogSessionModal('${p.id}')">
+              <i data-lucide="plus-circle"></i> Log Session
+            </button>
+            <button class="btn btn-accent btn-sm" onclick="completeProgram('${p.id}')">
+              <i data-lucide="award"></i> Complete
+            </button>
+          ` : ''}
+          <button class="btn btn-outline btn-sm" onclick="editPlan('${p.id}')"><i data-lucide="edit-2"></i> Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="deletePlan('${p.id}')" style="color:var(--danger);"><i data-lucide="trash-2"></i></button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  lucide.createIcons();
+}
+
+async function savePlan() {
+  const patientId = document.getElementById('planPatientId').value;
+  const name = document.getElementById('planName').value.trim();
+  const sessionsTotal = parseInt(document.getElementById('planSessionsTotal').value);
+  const assignedTherapist = document.getElementById('planTherapist').value.trim();
+  const sessionDuration = document.getElementById('planDuration').value;
+  const status = document.getElementById('planStatus').value;
+  const goals = document.getElementById('planGoals').value.trim();
+  
+  if (!patientId || !name || !sessionsTotal || !assignedTherapist) {
+    showToast('Please fill in patient, name, session totals, and therapist.', 'error');
+    return;
+  }
+  
+  const patient = allPatients.find(p => p.id.toString() === patientId.toString());
+  if (!patient) return;
+  
+  const id = document.getElementById('planId').value;
+  const planData = {
+    patientId: patientId,
+    patientName: patient.name,
+    name,
+    sessionsTotal,
+    assignedTherapist,
+    sessionDuration,
+    status,
+    goals
+  };
+  
+  try {
+    if (id) {
+      const parsedId = isNaN(id) ? id : parseInt(id);
+      const existing = await CMS.treatmentPlans.getById(parsedId);
+      await CMS.treatmentPlans.update({ ...existing, ...planData, id: parsedId });
+      showToast('Rehabilitation program updated!', 'success');
+    } else {
+      await CMS.treatmentPlans.add({
+        ...planData,
+        sessionsCompleted: 0
+      });
+      showToast('Rehabilitation program created!', 'success');
+    }
+    closeModal('planModal');
+    await loadData();
+    renderPlans();
+  } catch (err) {
+    showToast('Error saving program: ' + err.message, 'error');
+  }
+}
+
+async function editPlan(id) {
+  const plan = await CMS.treatmentPlans.getById(id);
+  
+  document.getElementById('planModalTitle').textContent = 'Edit Rehab Program';
+  document.getElementById('planId').value = plan.id;
+  document.getElementById('planPatientId').value = plan.patientId;
+  document.getElementById('planName').value = plan.name;
+  document.getElementById('planSessionsTotal').value = plan.sessionsTotal;
+  document.getElementById('planTherapist').value = plan.assignedTherapist;
+  document.getElementById('planDuration').value = plan.sessionDuration || '45 Mins';
+  document.getElementById('planStatus').value = plan.status;
+  document.getElementById('planGoals').value = plan.goals || '';
+  
+  openModal('planModal');
+}
+
+async function deletePlan(id) {
+  if (!confirm('Are you sure you want to delete this program? All logged sessions will be orphaned.')) return;
+  await CMS.treatmentPlans.delete(id);
+  showToast('Rehab program deleted.', 'warning');
+  await loadData();
+  renderPlans();
+}
+
+// Log Session Handlers
+function openLogSessionModal(planId) {
+  document.getElementById('sessionPlanId').value = planId;
+  document.getElementById('sessionDate').value = todayISO();
+  document.getElementById('sessionNotes').value = '';
+  openModal('sessionModal');
+}
+
+async function saveSession() {
+  const planIdVal = document.getElementById('sessionPlanId').value;
+  const planId = isNaN(planIdVal) ? planIdVal : parseInt(planIdVal);
+  const date = document.getElementById('sessionDate').value;
+  const notes = document.getElementById('sessionNotes').value.trim();
+  
+  if (!date || !notes) {
+    showToast('Please specify date and treatment notes.', 'error');
+    return;
+  }
+  
+  try {
+    // Add session
+    await CMS.treatmentSessions.add({
+      treatmentPlanId: planId,
+      date,
+      notes
+    });
+    
+    // Increment completed sessions on plan
+    const plan = await CMS.treatmentPlans.getById(planId);
+    const newCompleted = parseInt(plan.sessionsCompleted || 0) + 1;
+    await CMS.treatmentPlans.update({
+      ...plan,
+      sessionsCompleted: newCompleted,
+      status: newCompleted >= parseInt(plan.sessionsTotal) ? 'Completed' : plan.status
+    });
+    
+    // Add to patient EMR timeline
+    await CMS.visits.add({
+      patientId: plan.patientId,
+      date,
+      notes: `Rehab Session Logged: Completed session #${newCompleted} for plan "${plan.name}". Note: ${notes}`
+    });
+    
+    showToast('Session logged successfully!', 'success');
+    closeModal('sessionModal');
+    await loadData();
+    renderPlans();
+  } catch (err) {
+    showToast('Error logging session: ' + err.message, 'error');
+  }
+}
+
+async function deleteSession(id) {
+  if (!confirm('Delete this session log? This will decrement the completion progress.')) return;
+  
+  try {
+    const parsedId = isNaN(id) ? id : parseInt(id);
+    const session = await CMS.treatmentSessions.getById(parsedId);
+    const planId = session.treatmentPlanId;
+    
+    await CMS.treatmentSessions.delete(parsedId);
+    
+    const plan = await CMS.treatmentPlans.getById(planId);
+    const newCompleted = Math.max(0, parseInt(plan.sessionsCompleted || 0) - 1);
+    await CMS.treatmentPlans.update({
+      ...plan,
+      sessionsCompleted: newCompleted,
+      status: plan.status === 'Completed' ? 'Active' : plan.status
+    });
+    
+    showToast('Session log deleted.', 'warning');
+    await loadData();
+    renderPlans();
+  } catch (e) {
+    showToast('Error deleting session log.', 'error');
+  }
+}
+
+async function completeProgram(id) {
+  if (!confirm('Mark this physiotherapy program as completed?')) return;
+  
+  try {
+    const plan = await CMS.treatmentPlans.getById(id);
+    await CMS.treatmentPlans.update({
+      ...plan,
+      status: 'Completed',
+      sessionsCompleted: plan.sessionsTotal
+    });
+    showToast('Congratulations! Program completed successfully.', 'success');
+    await loadData();
+    renderPlans();
+  } catch (e) {
+    showToast('Error updating status.', 'error');
+  }
+}
+
+function navigateToPatientProfile(patientId) {
+  sessionStorage.setItem('openPatientProfileId', patientId);
+  window.location.href = 'patients.html';
+}
+
+function todayISO() {
+  return new Date().toISOString().split('T')[0];
+}
+</script>
+</body>
+</html>

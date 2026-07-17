@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakshmi Ortho Prescription Template</title>
+<link rel="stylesheet" href="prescription-print.css">
+</head>
+<body>
+<div class="page">
+
+<header class="header">
+  <div class="left">
+    <h1>LAKSHMI ORTHO &amp; PAIN CLINIC</h1>
+    <p>99, West Car Street</p>
+    <p>Tiruchendur - 628215</p>
+  </div>
+
+  <div class="center">
+    <img class="logo" src="assets/Prescription_logo.svg?v=1.0.1" alt="Clinic Logo">
+  </div>
+
+  <div class="right">
+    <h2>Dr. C. SANJAY</h2>
+    <p><strong>M.S (ORTHO)</strong></p>
+    <p>Consultant Trauma,</p>
+    <p>Replacement &amp; Spine Surgeon</p>
+    <p>Reg. No: 100886</p>
+  </div>
+</header>
+
+<section class="patient-info">
+  <div><strong>Patient Name:</strong> {{patientName}}</div>
+  <div><strong>Date:</strong> {{date}}</div>
+  <div><strong>Age / Gender:</strong> {{ageGender}}</div>
+  <div><strong>Mobile:</strong> {{mobile}}</div>
+  <div><strong>Patient ID:</strong> {{patientId}}</div>
+  <div><strong>Diagnosis:</strong> {{diagnosis}}</div>
+  <div class="full"><strong>Condition:</strong> {{condition}}</div>
+</section>
+
+<div class="rx">℞</div>
+
+<table class="medicine-table">
+<thead>
+<tr>
+<th>Medicine</th>
+<th>Dosage</th>
+<th>Frequency</th>
+<th>Duration</th>
+<th>Instructions</th>
+</tr>
+</thead>
+<tbody>
+{{medicineRows}}
+</tbody>
+</table>
+
+<div class="watermark">
+<img src="assets/Prescription_watermark.svg?v=1.0.1" alt="">
+</div>
+
+<footer class="footer">
+<div>Consultation Time: 6.00 PM - 9.00 PM</div>
+<div>Appointments: 8903783462</div>
+</footer>
+
+</div>
+</body>
+</html>

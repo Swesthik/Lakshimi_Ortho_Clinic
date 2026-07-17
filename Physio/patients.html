@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Supabase Auth Central Guard -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="js/auth-guard.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patients | Lakshmi HIS &mdash; Orthopaedic &amp; Pain HIS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css?v=9">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+<div class="cms-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand"><i data-lucide="activity"></i>Revive<span>CMS</span></div>
+    <div class="sidebar-section-label">Main Menu</div>
+    <nav class="sidebar-nav">
+      <a href="index.html"         class="nav-item" data-page="index.html"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+      <a href="patients.html"      class="nav-item active" data-page="patients.html"><i data-lucide="users"></i> Patients</a>
+      <a href="medicines.html"     class="nav-item" data-page="medicines.html"><i data-lucide="pill"></i> Medicines<span class="nav-badge low-stock-badge" style="display:none">0</span></a>
+      <a href="prescriptions.html" class="nav-item" data-page="prescriptions.html"><i data-lucide="file-text"></i> Prescriptions</a>
+      <a href="reports.html"       class="nav-item" data-page="reports.html"><i data-lucide="bar-chart-2"></i> Reports</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-doctor">
+        <div class="doctor-avatar">K</div>
+        <div><h4>Dr. R. Karthik</h4><p>MPT (Orthopaedics)</p></div>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-overlay"></div>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn"><i data-lucide="menu"></i></button>
+      <h1 class="page-title">Patients</h1>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="addPatientBtn"><i data-lucide="user-plus"></i> Add Patient</button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main-content">
+    <div class="filter-bar">
+      <div class="search-input-wrap">
+        <i data-lucide="search"></i>
+        <input type="text" id="searchInput" placeholder="Search by name, mobile or patient code...">
+      </div>
+      <select id="genderFilter" style="padding:0.7rem 1rem;border:1.5px solid var(--border);border-radius:50px;background:var(--bg-main);font-size:0.9rem;">
+        <option value="">All Genders</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+
+    <div class="card fade-in">
+      <div class="card-header">
+        <h3>All Patients</h3>
+        <span id="patientCount" class="badge badge-primary">0 patients</span>
+      </div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Patient Code</th>
+              <th>Name</th>
+              <th>Age / Gender</th>
+              <th>Mobile</th>
+              <th>Condition</th>
+              <th>Last Visit</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="patientsTableBody">
+            <tr><td colspan="7"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Add / Edit Patient Modal -->
+<div class="modal-overlay" id="patientModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Patient</h2>
+      <button class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="patientForm" novalidate>
+        <input type="hidden" id="patientId">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" id="fName" placeholder="e.g. Arun Kumar" required>
+          </div>
+          <div class="form-group">
+            <label>Age *</label>
+            <input type="number" id="fAge" placeholder="e.g. 34" min="1" max="120" required>
+          </div>
+          <div class="form-group">
+            <label>Gender *</label>
+            <select id="fGender" required>
+              <option value="">Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Mobile Number *</label>
+            <div class="input-group">
+              <span class="input-group-prefix">+91</span>
+              <input type="tel" id="fMobile" placeholder="98765 43210" maxlength="10" required>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label>Address</label>
+            <input type="text" id="fAddress" placeholder="No. 5, Anna Nagar, Chennai &ndash; 600040">
+          </div>
+          <div class="form-group">
+            <label>Condition / Problem *</label>
+            <input type="text" id="fCondition" placeholder="e.g. Lower Back Pain" autocomplete="off" required>
+          </div>
+          <div class="form-group">
+            <label>Diagnosis</label>
+            <input type="text" id="fDiagnosis" placeholder="e.g. Lumbar Disc Herniation" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Date of Visit *</label>
+            <input type="date" id="fDateOfVisit" required>
+          </div>
+          <div class="form-group">
+            <label>Chief Complaint</label>
+            <input type="text" id="fChiefComplaint" placeholder="e.g. Severe radiating pain down left leg">
+          </div>
+          <div class="form-group">
+            <label>Pain Score (0-10): <span id="painScoreLabel" style="color:var(--danger);font-weight:700;">5</span></label>
+            <input type="range" id="fPainScore" min="0" max="10" value="5" oninput="document.getElementById('painScoreLabel').textContent=this.value" style="padding:0; margin-top:0.4rem; cursor:pointer;">
+          </div>
+          <div class="form-group">
+            <label>Injury Type</label>
+            <select id="fInjuryType">
+              <option value="Non-Traumatic / Degenerative">Non-Traumatic / Degenerative</option>
+              <option value="Traumatic Fracture">Traumatic Fracture</option>
+              <option value="Sports / Ligament Tear">Sports / Ligament Tear</option>
+              <option value="Post-Surgical Stiffness">Post-Surgical Stiffness</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Injury Location</label>
+            <input type="text" id="fInjuryLocation" placeholder="e.g. L4-L5 lumbar, Right knee lateral">
+          </div>
+          <div class="form-group">
+            <label>Duration of Symptoms</label>
+            <input type="text" id="fDurationSymptoms" placeholder="e.g. 2 weeks, 3 months">
+          </div>
+          <div class="form-group">
+            <label>Previous Treatment</label>
+            <input type="text" id="fPrevTreatment" placeholder="e.g. Local physio, Painkillers">
+          </div>
+          <div class="form-group">
+            <label>Surgical History</label>
+            <input type="text" id="fSurgicalHistory" placeholder="e.g. None, Knee arthroscopy in 2024">
+          </div>
+          <div class="form-group">
+            <label>Co-Morbidities</label>
+            <input type="text" id="fCoMorbidities" placeholder="e.g. Diabetes, Hypertension">
+          </div>
+          <div class="form-group">
+            <label>Range of Motion (ROM)</label>
+            <input type="text" id="fROM" placeholder="e.g. Flexion: 40 deg, Extension: 10 deg">
+          </div>
+          <div class="form-group">
+            <label>Muscle Strength</label>
+            <input type="text" id="fMuscleStrength" placeholder="e.g. Hip flexors 4/5, Knee extensors 4/5">
+          </div>
+          <div class="form-group">
+            <label>Functional Limitation</label>
+            <input type="text" id="fFuncLimit" placeholder="e.g. Difficulty sitting >20m, walking stiffness">
+          </div>
+          <div class="form-group">
+            <label>Gait Assessment</label>
+            <input type="text" id="fGaitAssessment" placeholder="e.g. Antalgic gait, slight right limp">
+          </div>
+          <div class="form-group full">
+            <label>Clinical Notes</label>
+            <textarea id="fNotes" placeholder="Additional details, precautions, follow-up instructions..."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" data-close-modal>Cancel</button>
+      <button class="btn btn-primary" id="savePatientBtn"><i data-lucide="save"></i> Save Patient</button>
+    </div>
+  </div>
+</div>
+
+<!-- Patient Profile Modal -->
+<div class="modal-overlay" id="profileModal" style="z-index:600;">
+  <div class="modal" style="max-width:800px;">
+    <div class="modal-header">
+      <h2>Patient Profile</h2>
+      <button class="modal-close" onclick="closeModal('profileModal')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body" id="profileModalBody">
+      <div class="spinner"></div>
+    </div>
+  </div>
+</div>
+
+<!-- File Upload Modal -->
+<div class="modal-overlay" id="fileModal" style="z-index:700;">
+  <div class="modal" style="max-width:540px;">
+    <div class="modal-header">
+      <h2>Upload Medical Files</h2>
+      <button class="modal-close" onclick="closeModal('fileModal')"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="filePatientId">
+      <div class="upload-zone" id="uploadZone">
+        <i data-lucide="upload-cloud"></i>
+        <p><span>Click to upload</span> or drag and drop</p>
+        <p style="font-size:0.78rem;margin-top:0.5rem;">X-ray, MRI, CT Scan, Images (JPG, PNG, PDF)</p>
+        <input type="file" id="fileInput" accept="image/*,.pdf" multiple style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+      </div>
+      <div id="uploadedFiles" class="file-grid" style="margin-top:1.5rem;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('fileModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manage Options Modal -->
+<div class="modal-overlay" id="manageOptionsModal" style="z-index:1100;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-header">
+      <h2 id="manageModalTitle">Manage Options</h2>
+      <button type="button" class="modal-close"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+      <input type="hidden" id="manageType">
+      
+      <!-- Add New Option Input Group -->
+      <div class="form-group" style="margin-bottom: 0;">
+        <label for="newOptionInput" style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--text-main);">Add New Option</label>
+        <div class="input-group" style="display: flex;">
+          <input type="text" id="newOptionInput" placeholder="Enter custom option name..." style="flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0;">
+          <button type="button" class="btn btn-primary" id="btnAddOption" style="border-top-left-radius: 0; border-bottom-left-radius: 0; white-space: nowrap; padding: 0.6rem 1.25rem;">
+            Add Option
+          </button>
+        </div>
+      </div>
+
+      <!-- Search Options Input -->
+      <div class="search-input-wrap" style="position: relative; margin-bottom: 0; flex: none;">
+        <i data-lucide="search" style="position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-muted);"></i>
+        <input type="text" id="manageSearchInput" placeholder="Search custom options..." style="padding-left: 2.4rem; width: 100%;">
+      </div>
+
+      <!-- Option List Container -->
+      <div id="manageList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.75rem; background: rgba(0,0,0,0.15);">
+        <!-- List items dynamically injected here -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" data-close-manage>Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/repositories/baseRepository.js"></script>
+<script src="js/repositories/patientRepository.js"></script>
+<script src="js/repositories/appointmentRepository.js"></script>
+<script src="js/repositories/prescriptionRepository.js"></script>
+<script src="js/repositories/medicineRepository.js"></script>
+<script src="js/repositories/rehabRepository.js"></script>
+<script src="js/repositories/surgeryRepository.js"></script>
+<script src="js/repositories/diagnosticRepository.js"></script>
+<script src="js/repositories/invoiceRepository.js"></script>
+<script src="js/repositories/reportRepository.js"></script>
+
+<script src="js/db.js?v=10"></script>
+<script src="js/utils.js?v=10"></script>
+<script src="js/smart-dropdown.js"></script>
+<script>
+let allPatients = [];
+let editingPatientId = null;
+
+async function loadPatients() {
+  allPatients = await CMS.patients.getAll();
+  renderTable(allPatients);
+}
+
+function renderTable(patients) {
+  document.getElementById('patientCount').textContent = `${patients.length} patients`;
+  const tbody = document.getElementById('patientsTableBody');
+  if (!patients.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i data-lucide="users"></i><h3>No patients found</h3><p>Add your first patient to get started</p></div></td></tr>`;
+    lucide.createIcons(); return;
+  }
+  tbody.innerHTML = patients.slice().reverse().map(p => `
+    <tr>
+      <td>
+        <span class="badge badge-primary" style="font-size:0.85rem;font-weight:700;letter-spacing:1px;">${p.patientCode || p.id}</span>
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div style="width:36px;height:36px;border-radius:50%;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">${p.name.charAt(0).toUpperCase()}</div>
+          <span class="td-name">${p.name}</span>
+        </div>
+      </td>
+      <td class="td-light">${p.age} yrs / ${p.gender}</td>
+      <td class="td-light">${p.mobile}</td>
+      <td><span class="badge badge-primary">${p.condition || '&mdash;'}</span></td>
+      <td class="td-light">${formatDate(p.dateOfVisit)}</td>
+      <td>
+        <div style="display:flex;gap:0.4rem;">
+          <button class="btn btn-ghost btn-sm btn-icon" title="View Profile" onclick="viewProfile('${p.id}')"><i data-lucide="eye"></i></button>
+          <button class="btn btn-ghost btn-sm btn-icon" title="Edit" onclick="editPatient('${p.id}')"><i data-lucide="edit-2"></i></button>
+          <button class="btn btn-ghost btn-sm btn-icon" title="Upload Files" onclick="openFileUpload('${p.id}')" style="color:var(--accent)"><i data-lucide="paperclip"></i></button>
+          <button class="btn btn-ghost btn-sm btn-icon" title="Delete" onclick="deletePatient('${p.id}')" style="color:var(--danger)"><i data-lucide="trash-2"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  lucide.createIcons();
+}
+
+// Search + Filter
+document.getElementById('searchInput').addEventListener('input', filterPatients);
+document.getElementById('genderFilter').addEventListener('change', filterPatients);
+
+function filterPatients() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const gender = document.getElementById('genderFilter').value;
+  const filtered = allPatients.filter(p =>
+    (!q || p.name.toLowerCase().includes(q) || p.mobile.includes(q) ||
+      (p.patientCode || '').toLowerCase().includes(q) ||
+      (p.id || '').toString().toLowerCase().includes(q)) &&
+    (!gender || p.gender === gender)
+  );
+  renderTable(filtered);
+}
+
+// Add Patient Modal
+document.getElementById('addPatientBtn').addEventListener('click', () => {
+  editingPatientId = null;
+  document.getElementById('modalTitle').textContent = 'Add Patient';
+  document.getElementById('patientForm').reset();
+  document.getElementById('fPainScore').value = 5;
+  document.getElementById('painScoreLabel').textContent = 5;
+  document.getElementById('fDateOfVisit').value = todayISO();
+  openModal('patientModal');
+  lucide.createIcons();
+});
+
+// Save Patient
+document.getElementById('savePatientBtn').addEventListener('click', async () => {
+  const name = document.getElementById('fName').value.trim();
+  const age = document.getElementById('fAge').value;
+  const gender = document.getElementById('fGender').value;
+  const mobile = document.getElementById('fMobile').value.trim();
+
+  if (!name || !age || !gender || !mobile) {
+    showToast('Please fill all required fields.', 'error'); return;
+  }
+
+  const data = {
+    name, age: parseInt(age), gender,
+    mobile: '+91 ' + mobile,
+    address: document.getElementById('fAddress').value,
+    condition: document.getElementById('fCondition').value,
+    diagnosis: document.getElementById('fDiagnosis').value,
+    dateOfVisit: document.getElementById('fDateOfVisit').value,
+    notes: document.getElementById('fNotes').value,
+    
+    // HIS upgrade fields
+    chiefComplaint: document.getElementById('fChiefComplaint').value,
+    painScore: parseInt(document.getElementById('fPainScore').value),
+    injuryType: document.getElementById('fInjuryType').value,
+    injuryLocation: document.getElementById('fInjuryLocation').value,
+    durationSymptoms: document.getElementById('fDurationSymptoms').value,
+    prevTreatment: document.getElementById('fPrevTreatment').value,
+    surgicalHistory: document.getElementById('fSurgicalHistory').value,
+    coMorbidities: document.getElementById('fCoMorbidities').value,
+    rom: document.getElementById('fROM').value,
+    muscleStrength: document.getElementById('fMuscleStrength').value,
+    funcLimit: document.getElementById('fFuncLimit').value,
+    gaitAssessment: document.getElementById('fGaitAssessment').value
+  };
+
+  try {
+    if (editingPatientId) {
+      await CMS.patients.update({ ...data, id: editingPatientId });
+      showToast('Patient updated successfully!', 'success');
+    } else {
+      await CMS.patients.add(data);
+      showToast('Patient added successfully!', 'success');
+    }
+    closeModal('patientModal');
+    await loadPatients();
+  } catch (err) {
+    showToast('Error saving patient: ' + err.message, 'error');
+  }
+});
+
+async function editPatient(id) {
+  const p = await CMS.patients.getById(id);
+  editingPatientId = id;
+  document.getElementById('modalTitle').textContent = 'Edit Patient';
+  document.getElementById('fName').value = p.name || '';
+  document.getElementById('fAge').value = p.age || '';
+  document.getElementById('fGender').value = p.gender || '';
+  document.getElementById('fMobile').value = (p.mobile || '').replace('+91 ', '').replace('+91', '');
+  document.getElementById('fAddress').value = p.address || '';
+  document.getElementById('fCondition').value = p.condition || '';
+  document.getElementById('fDiagnosis').value = p.diagnosis || '';
+  document.getElementById('fDateOfVisit').value = p.dateOfVisit || todayISO();
+  
+  // Clinical fields
+  document.getElementById('fChiefComplaint').value = p.chiefComplaint || '';
+  document.getElementById('fPainScore').value = p.painScore !== undefined ? p.painScore : 5;
+  document.getElementById('painScoreLabel').textContent = p.painScore !== undefined ? p.painScore : 5;
+  document.getElementById('fInjuryType').value = p.injuryType || 'Non-Traumatic / Degenerative';
+  document.getElementById('fInjuryLocation').value = p.injuryLocation || '';
+  document.getElementById('fDurationSymptoms').value = p.durationSymptoms || '';
+  document.getElementById('fPrevTreatment').value = p.prevTreatment || '';
+  document.getElementById('fSurgicalHistory').value = p.surgicalHistory || '';
+  document.getElementById('fCoMorbidities').value = p.coMorbidities || '';
+  document.getElementById('fROM').value = p.rom || '';
+  document.getElementById('fMuscleStrength').value = p.muscleStrength || '';
+  document.getElementById('fFuncLimit').value = p.funcLimit || '';
+  document.getElementById('fGaitAssessment').value = p.gaitAssessment || '';
+  document.getElementById('fNotes').value = p.notes || '';
+  
+  openModal('patientModal');
+  lucide.createIcons();
+}
+
+async function deletePatient(id) {
+  if (!confirmAction('Are you sure you want to delete this patient? All related records will remain but the patient will be removed.')) return;
+  await CMS.patients.delete(id);
+  showToast('Patient deleted.', 'warning');
+  await loadPatients();
+}
+
+async function viewProfile(id) {
+  openModal('profileModal');
+  const body = document.getElementById('profileModalBody');
+  body.innerHTML = '<div class="spinner"></div>';
+  lucide.createIcons();
+
+  try {
+    const [patient, prescriptions, visits, files, appointments, treatmentPlans, surgeries, diagnosticReports, invoices] = await Promise.all([
+      CMS.patients.getById(id),
+      CMS.prescriptions.getByPatient(id),
+      CMS.visits.getByPatient(id),
+      CMS.files.getByPatient(id),
+      CMS.appointments.getByPatient(id),
+      CMS.treatmentPlans.getByPatient(id),
+      CMS.surgeries.getByPatient(id),
+      CMS.diagnosticReports.getByPatient(id),
+      CMS.invoices.getByPatient(id)
+    ]);
+
+    if (!patient) {
+      body.innerHTML = `
+        <div class="empty-state" style="padding:2.5rem; text-align:center; color:var(--text-muted);">
+          <i data-lucide="user-x" style="width:48px; height:48px; margin-bottom:1rem; color:var(--text-light);"></i>
+          <h3>Patient Profile Not Found</h3>
+          <p style="font-size:0.9rem; margin-top:0.5rem;">The requested patient record could not be found in the database.</p>
+          <button class="btn btn-outline btn-sm" style="margin-top:1rem;" onclick="closeModal('profileModal')">Close</button>
+        </div>
+      `;
+      lucide.createIcons();
+      return;
+    }
+
+    const rxWithMeds = await Promise.all(prescriptions.map(async rx => {
+      const meds = await CMS.prescriptions.getMedicines(rx.id);
+      return { ...rx, meds };
+    }));
+
+  // Construct Visual EMR Medical Timeline events
+  const timelineEvents = [];
+  
+  visits.forEach(v => {
+    timelineEvents.push({
+      date: v.date,
+      type: 'visit',
+      title: 'Clinical Consultation Visit',
+      color: 'var(--primary)',
+      icon: 'activity',
+      html: `<p style="margin:0;font-weight:500;">${v.notes}</p>`
+    });
+  });
+
+  rxWithMeds.forEach(rx => {
+    const medList = rx.meds.map(m => `<li style="font-size:0.88rem;">${m.medicineName} &times; ${m.qty} &mdash; ${m.dosage}</li>`).join('');
+    timelineEvents.push({
+      date: rx.date,
+      type: 'prescription',
+      title: 'Digital Prescription Issued',
+      color: 'var(--accent)',
+      icon: 'file-text',
+      html: `
+        <div>
+          <ul style="margin-top:0.4rem; list-style:disc; padding-left:1.2rem; margin-bottom:0.5rem;">${medList}</ul>
+          ${rx.notes ? `<p style="font-size:0.82rem; color:var(--text-muted); margin:0.5rem 0; font-style:italic;">Notes: ${rx.notes}</p>` : ''}
+          <button class="btn btn-outline btn-sm" style="margin-top:0.4rem;" onclick="generatePrescriptionPDF('${rx.id}')">
+            <i data-lucide="printer"></i> Print RX
+          </button>
+        </div>
+      `
+    });
+  });
+
+  appointments.forEach(a => {
+    let statCls = a.status === 'Completed' ? 'badge-success' : a.status === 'Cancelled' ? 'badge-danger' : 'badge-primary';
+    timelineEvents.push({
+      date: a.date,
+      type: 'appointment',
+      title: `Clinic Appointment Scheduled`,
+      color: '#a855f7',
+      icon: 'calendar',
+      html: `
+        <div>
+          <p style="margin:0; font-weight:500;">
+            Time: <strong>${a.time}</strong> | Type: <strong>${a.type}</strong>
+            <span class="badge ${statCls}" style="margin-left:0.5rem;">${a.status}</span>
+          </p>
+          ${a.note ? `<p style="margin:0.25rem 0 0 0; font-size:0.83rem; color:var(--text-muted);">${a.note}</p>` : ''}
+        </div>
+      `
+    });
+  });
+
+  treatmentPlans.forEach(tp => {
+    timelineEvents.push({
+      date: tp.date || tp.createdAt?.split('T')[0] || todayISO(),
+      type: 'rehab',
+      title: `Physiotherapy Rehab Plan Initiated`,
+      color: '#ec4899',
+      icon: 'heart-pulse',
+      html: `
+        <div>
+          <h4 style="margin:0; font-size:0.92rem; color:var(--primary);">${tp.name}</h4>
+          <p style="margin:0.25rem 0; font-size:0.85rem;">
+            Sessions: <strong>${tp.sessionsCompleted} / ${tp.sessionsTotal}</strong> | Status: <strong>${tp.status}</strong>
+          </p>
+          <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">
+            <strong>Goals:</strong> ${tp.goals}<br>
+            <strong>Therapist:</strong> ${tp.assignedTherapist}
+          </p>
+        </div>
+      `
+    });
+  });
+
+  surgeries.forEach(s => {
+    timelineEvents.push({
+      date: s.date,
+      type: 'surgery',
+      title: `Surgical Procedure Performed`,
+      color: 'var(--danger)',
+      icon: 'activity',
+      html: `
+        <div>
+          <h4 style="margin:0; font-size:0.95rem; color:var(--danger);">${s.type}</h4>
+          <p style="margin:0.25rem 0; font-size:0.85rem;">
+            Surgeon: <strong>${s.surgeon}</strong> | Implant: <strong>${s.implantUsed || 'None'}</strong>
+          </p>
+          <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">
+            <strong>Recovery:</strong> ${s.recoveryProgress || 'Ã¢â‚¬â€'}<br>
+            <strong>Follow-ups:</strong> ${s.followUpVisits || 'Ã¢â‚¬â€'}
+          </p>
+        </div>
+      `
+    });
+  });
+
+  diagnosticReports.forEach(r => {
+    timelineEvents.push({
+      date: r.date,
+      type: 'diagnostic',
+      title: `Radiology & Lab Diagnostic Report (${r.category})`,
+      color: '#f59e0b',
+      icon: 'clipboard',
+      html: `
+        <div>
+          <p style="margin:0; font-weight:500;">${r.details}</p>
+          <p style="margin:0.25rem 0 0 0; font-size:0.75rem; color:var(--text-muted);">Referred by: ${r.doctorName || 'Dr. C. Sanjay'}</p>
+          ${r.dataUrl ? `
+            <div style="margin-top:0.75rem;">
+              <img src="${r.dataUrl}" alt="${r.fileName}" style="max-width:180px; width:100%; height:auto; border-radius:6px; border:1.5px solid var(--border); display:block; cursor:pointer;" onclick="window.open('${r.dataUrl}','_blank')">
+              <span style="font-size:0.7rem; color:var(--text-muted);">${r.fileName} (Click to expand)</span>
+            </div>
+          ` : ''}
+        </div>
+      `
+    });
+  });
+
+  invoices.forEach(inv => {
+    let statCls = inv.status === 'Paid' ? 'badge-success' : inv.status === 'Partial' ? 'badge-warning' : 'badge-danger';
+    timelineEvents.push({
+      date: inv.date,
+      type: 'invoice',
+      title: `Billing Invoice Generated`,
+      color: '#10b981',
+      icon: 'credit-card',
+      html: `
+        <div>
+          <p style="margin:0; font-weight:500;">
+            Invoice No: <strong>${inv.invoiceNo}</strong> | Total: <strong>${formatCurrency(inv.totalAmount)}</strong>
+            <span class="badge ${statCls}" style="margin-left:0.5rem;">${inv.status}</span>
+          </p>
+          ${inv.notes ? `<p style="margin:0.25rem 0; font-size:0.83rem; color:var(--text-muted);">${inv.notes}</p>` : ''}
+          <button class="btn btn-outline btn-sm" style="margin-top:0.4rem;" onclick="generateInvoicePDF('${inv.id}')">
+            <i data-lucide="printer"></i> Print Invoice
+          </button>
+        </div>
+      `
+    });
+  });
+
+  // Sort timeline events chronologically (Newest first)
+  timelineEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // Visual EMR timeline HTML
+  const timelineHTML = timelineEvents.length ? `
+    <div class="timeline">
+      ${timelineEvents.map(e => `
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:${e.color}; box-shadow: 0 0 0 2px ${e.color};"></div>
+          <div class="timeline-date">${formatDate(e.date)}</div>
+          <div class="timeline-content" style="border-left: 3px solid ${e.color};">
+            <h4 style="margin:0 0 0.5rem 0; font-size:0.9rem; font-family:var(--font-heading); color:${e.color}; display:flex; align-items:center; gap:0.4rem;">
+              <i data-lucide="${e.icon}" style="width:14px; height:14px;"></i> ${e.title}
+            </h4>
+            ${e.html}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  ` : `<div class="empty-state" style="padding:2rem;"><p>No medical record timeline events yet.</p></div>`;
+
+  body.innerHTML = `
+    <div class="profile-header" style="background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);">
+      <div class="profile-avatar">${patient.name.charAt(0)}</div>
+      <div>
+        <h1>${patient.name}</h1>
+        <p>${patient.age} yrs | ${patient.gender} | ${patient.mobile}</p>
+        <div class="profile-badges">
+          <span class="profile-badge" style="background:rgba(255,255,255,0.25);font-size:1rem;font-weight:800;letter-spacing:2px;">Patient ID: ${patient.patientCode || patient.id}</span>
+          <span class="profile-badge" style="background:rgba(255,255,255,0.15);">${patient.condition || 'No condition'}</span>
+          <span class="profile-badge" style="background:rgba(255,255,255,0.15);">${patient.diagnosis || 'No diagnosis'}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orthopaedic Assessment Block -->
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-header"><h3>Orthopaedic Assessment &amp; Clinical History</h3></div>
+      <div class="card-body" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem 1.5rem; font-size:0.9rem;">
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Chief Complaint</label><p style="margin:0; font-weight:600;">${patient.chiefComplaint || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Pain Score (0-10)</label><p style="margin:0; font-weight:600; color:var(--danger);">${patient.painScore !== undefined ? patient.painScore + '/10' : '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Injury Type</label><p style="margin:0;">${patient.injuryType || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Location of Injury</label><p style="margin:0;">${patient.injuryLocation || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Duration of Symptoms</label><p style="margin:0;">${patient.durationSymptoms || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Previous Treatment</label><p style="margin:0;">${patient.prevTreatment || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Surgical History</label><p style="margin:0;">${patient.surgicalHistory || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Co-Morbidities</label><p style="margin:0;">${patient.coMorbidities || '&mdash;'}</p></div>
+        
+        <div style="grid-column:1/-1; height:1px; background:var(--border); margin:0.5rem 0;"></div>
+        
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Range of Motion (ROM)</label><p style="margin:0; font-weight:500;">${patient.rom || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Muscle Strength</label><p style="margin:0; font-weight:500;">${patient.muscleStrength || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Functional Limitations</label><p style="margin:0; font-weight:500;">${patient.funcLimit || '&mdash;'}</p></div>
+        <div><label style="color:var(--text-muted); font-size:0.78rem; font-weight:600; display:block;">Gait Assessment</label><p style="margin:0; font-weight:500;">${patient.gaitAssessment || '&mdash;'}</p></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;margin-bottom:1.25rem;">
+      <div class="card"><div class="card-header"><h3>Address &amp; Notes</h3></div>
+        <div class="card-body info-list" style="padding: 1rem 1.4rem;">
+          <div class="info-item"><label>Address</label><p>${patient.address || '&mdash;'}</p></div>
+          <div class="info-item"><label>Date of First Visit</label><p>${formatDate(patient.dateOfVisit)}</p></div>
+          <div class="info-item"><label>Notes</label><p>${patient.notes || '&mdash;'}</p></div>
+        </div>
+      </div>
+      <div class="card"><div class="card-header"><h3>EMR Record Summary</h3></div>
+        <div class="card-body" style="display:flex;flex-direction:column;gap:0.75rem; padding: 1rem 1.4rem;">
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Total Prescriptions</span><strong>${prescriptions.length}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Clinical Visits</span><strong>${visits.length}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Appointments</span><strong>${appointments.length}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Rehab Plans</span><strong>${treatmentPlans.length}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Surgeries</span><strong>${surgeries.length}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Diagnostic Reports</span><strong>${diagnosticReports.length}</strong></div>
+          <div style="display:flex;justify-content:space-between;"><span class="td-light">Uploaded Files</span><strong>${files.length}</strong></div>
+          <div style="margin-top:0.4rem; display:flex; flex-direction:column; gap:0.5rem;">
+            <button class="btn btn-accent btn-sm" style="width:100%;" onclick="closeModal('profileModal');openFileUpload('${id}')">
+              <i data-lucide="upload-cloud"></i> Upload Medical Files
+            </button>
+            <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generatePatientReportPDF('${id}')">
+              <i data-lucide="printer"></i> Print Patient Report
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${files.length ? `
+      <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card-header"><h3>Uploaded Patient Documents</h3></div>
+        <div class="card-body">
+          <div class="file-grid">
+            ${files.map(f => `
+              <div class="file-card">
+                ${f.dataUrl ? `<img src="${f.dataUrl}" alt="${f.name}" onclick="window.open('${f.dataUrl}','_blank')" style="cursor:pointer;">` : `<div style="height:120px;background:var(--bg-main);display:flex;align-items:center;justify-content:center;"><i data-lucide="file" style="width:40px;height:40px;color:var(--text-light)"></i></div>`}
+                <div class="file-card-info">${f.name}</div>
+                <button class="file-card-delete" onclick="deleteFile('${f.id}', '${id}')"><i data-lucide="x" style="width:12px;height:12px;"></i></button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>` : ''}
+
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div class="card-header"><h3>Visual EMR Medical Timeline</h3></div>
+      <div class="card-body">
+        ${timelineHTML}
+      </div>
+    </div>
+  `;
+    lucide.createIcons();
+  } catch (err) {
+    console.error('Error rendering patient profile:', err);
+    body.innerHTML = `
+      <div class="empty-state" style="padding:2.5rem; text-align:center; color:var(--danger);">
+        <i data-lucide="alert-circle" style="width:48px; height:48px; margin-bottom:1rem; color:var(--danger);"></i>
+        <h3>Error Loading Profile</h3>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-top:0.5rem;">${err.message || 'An unexpected error occurred while fetching EMR records.'}</p>
+        <button class="btn btn-outline btn-sm" style="margin-top:1rem;" onclick="closeModal('profileModal')">Close</button>
+      </div>
+    `;
+    lucide.createIcons();
+  }
+}
+
+async function deleteFile(fileId, patientId) {
+  if (!confirmAction('Delete this file?')) return;
+  await CMS.files.delete(fileId);
+  showToast('File deleted.', 'warning');
+  viewProfile(patientId);
+}
+
+// File Upload
+function openFileUpload(patientId) {
+  document.getElementById('filePatientId').value = patientId;
+  document.getElementById('uploadedFiles').innerHTML = '';
+  openModal('fileModal');
+  loadExistingFiles(patientId);
+  lucide.createIcons();
+}
+
+async function loadExistingFiles(patientId) {
+  const files = await CMS.files.getByPatient(patientId);
+  const container = document.getElementById('uploadedFiles');
+  if (files.length) {
+    container.innerHTML = files.map(f => `
+      <div class="file-card">
+        ${f.dataUrl ? `<img src="${f.dataUrl}" alt="${f.name}">` : `<div style="height:120px;background:var(--bg-main);display:flex;align-items:center;justify-content:center;"><i data-lucide="file" style="width:32px;height:32px;color:var(--text-light)"></i></div>`}
+        <div class="file-card-info">${f.name}</div>
+      </div>
+    `).join('');
+    lucide.createIcons();
+  }
+}
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const patientIdVal = document.getElementById('filePatientId').value;
+  const patientId = patientIdVal;
+  const files = Array.from(e.target.files);
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      await CMS.files.add(patientId, { name: file.name, type: file.type, size: file.size, dataUrl: ev.target.result });
+      showToast(`${file.name} uploaded!`, 'success');
+      await loadExistingFiles(patientId);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Drag and drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('dragover');
+  document.getElementById('fileInput').files = e.dataTransfer.files;
+  document.getElementById('fileInput').dispatchEvent(new Event('change'));
+});
+
+document.addEventListener('cms:ready', async () => {
+  await loadPatients();
+  const openId = sessionStorage.getItem('openPatientProfileId');
+  if (openId) {
+    sessionStorage.removeItem('openPatientProfileId');
+    viewProfile(openId);
+  }
+});
+</script>
+</body>
+</html>
